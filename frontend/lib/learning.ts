@@ -24,6 +24,10 @@ export function getCourses(): Course[] {
   return courses;
 }
 
+export function getWords(): Word[] {
+  return words;
+}
+
 export function getCourse(courseId: number): Course | undefined {
   return courses.find((course) => course.id === courseId);
 }

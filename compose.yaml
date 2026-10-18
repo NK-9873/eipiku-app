@@ -1,0 +1,48 @@
+services:
+  user-service:
+    build: ./services/user-service
+    ports: ["127.0.0.1:8081:8080"]
+    env_file: ./services/user-service/.env
+    depends_on:
+      users-db:
+        condition: service_healthy
+
+  users-db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: users
+      MYSQL_USER: users_app
+      MYSQL_PASSWORD: ${USERS_DB_PASSWORD:?set in root .env}
+      MYSQL_ROOT_PASSWORD: ${USERS_ROOT_PASSWORD:?set in root .env}
+    ports: ["127.0.0.1:13306:3306"]
+    volumes: ["users_data:/var/lib/mysql"]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      retries: 10
+
+  learning-service:
+    build: ./services/learning-service
+    ports: ["127.0.0.1:8082:8080"]
+    env_file: ./services/learning-service/.env
+    depends_on:
+      learning-db:
+        condition: service_healthy
+
+  learning-db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: learning
+      MYSQL_USER: learning_app
+      MYSQL_PASSWORD: ${LEARNING_DB_PASSWORD:?set in root .env}
+      MYSQL_ROOT_PASSWORD: ${LEARNING_ROOT_PASSWORD:?set in root .env}
+    ports: ["127.0.0.1:13307:3306"]
+    volumes: ["learning_data:/var/lib/mysql"]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      retries: 10
+
+volumes:
+  users_data:
+  learning_data:

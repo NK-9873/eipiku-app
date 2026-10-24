@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { getCourses, getCourseWords, getWords, MASTERY_LABELS, type Mastery } from "@/lib/learning";
+import { getCourseWords, getWords, MASTERY_LABELS, type Mastery } from "@/lib/learning";
 import { isInterrupted } from "@/lib/review";
 import { useLearner } from "./useLearner";
 
@@ -20,7 +20,7 @@ export function MyPage() {
   }
 
   const { user, wordProgresses, courseProgresses } = learner;
-  const courses = getCourses().map((course) => {
+  const courses = learner.courses.map((course) => {
     const total = getCourseWords(course.id).length;
     const progress = courseProgresses.find((cp) => cp.course_id === course.id);
     return { ...course, total, position: Math.min(progress?.current_position ?? 0, total), updatedAt: progress?.updated_at ?? "" };

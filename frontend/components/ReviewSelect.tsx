@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { getCourse, getCourses } from "@/lib/learning";
+import { getCourse } from "@/lib/learning";
 import { isInterrupted, pickReviewWords, REVIEW_TARGETS, type ReviewTarget } from "@/lib/review";
 import { useLearner, type LearnerData } from "./useLearner";
 
@@ -22,7 +22,7 @@ export function ReviewSelect() {
 function ReviewSelectForm({ learner, fixedCourseId }: { learner: LearnerData; fixedCourseId: number | null }) {
   const fixedCourse = fixedCourseId ? getCourse(fixedCourseId) : undefined;
   // 中断中のコースを先に出す（sort は安定なので、それ以外は元の順番のまま）
-  const courses = [...getCourses()].sort(
+  const courses = [...learner.courses].sort(
     (a, b) =>
       Number(isInterrupted(b.id, learner.courseProgresses)) - Number(isInterrupted(a.id, learner.courseProgresses)),
   );
@@ -30,7 +30,8 @@ function ReviewSelectForm({ learner, fixedCourseId }: { learner: LearnerData; fi
   const [courseId, setCourseId] = useState<number | "all">(fixedCourse?.id ?? "all");
   const [target, setTarget] = useState<ReviewTarget>("both");
 
-  const count = (c: number | "all", t: ReviewTarget) => pickReviewWords(c, t, learner.wordProgresses).length;
+  const count = (c: number | "all", t: ReviewTarget) =>
+    pickReviewWords(c === "all" ? learner.courses.map((course) => course.id) : [c], t, learner.wordProgresses).length;
   const selectedCount = count(courseId, target);
   const back = fixedCourse ? "course" : "mypage";
   const backHref = fixedCourse ? `/courses/${fixedCourse.id}` : "/mypage";

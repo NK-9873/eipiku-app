@@ -27,6 +27,7 @@ cd eipiku-app
 cp .env.example .env
 cp services/user-service/.env.example services/user-service/.env
 cp services/learning-service/.env.example services/learning-service/.env
+cp frontend/.env.local.example frontend/.env.local
 ```
 
 各 .env の `change_me` をローカル用のパスワードに書き換える。
@@ -47,6 +48,7 @@ docker compose down             # 停止（データは残る）
 
 - http://localhost:8081/health
 - http://localhost:8082/health
+- http://localhost:8082/courses（コース一覧の JSON）
 
 ## フロントエンドの起動
 

@@ -1,5 +1,5 @@
-// 学習データの取得処理。今はモックデータを読むだけだが、
-// API ができたらここを fetch に差し替えれば画面側はそのまま使える。
+// 学習データの取得処理。コース一覧は learning-service の API から、
+// それ以外はまだモックデータから読んでいる。API ができたものから fetch に差し替える。
 import {
   courses,
   course_words,
@@ -20,8 +20,18 @@ export const MASTERY_LABELS: Record<Mastery, string> = {
   mastered: "覚えた",
 };
 
-export function getCourses(): Course[] {
-  return courses;
+const API_URL = process.env.NEXT_PUBLIC_LEARNING_API_URL;
+
+// GET /courses（learning-service）
+export async function getCourses(): Promise<Course[]> {
+  if (!API_URL) {
+    throw new Error("NEXT_PUBLIC_LEARNING_API_URL が設定されていません（frontend/.env.local を確認してください）");
+  }
+  const res = await fetch(`${API_URL}/courses`);
+  if (!res.ok) {
+    throw new Error(`コース一覧の取得に失敗しました（HTTP ${res.status}）`);
+  }
+  return res.json();
 }
 
 export function getWords(): Word[] {

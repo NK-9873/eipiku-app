@@ -1,11 +1,7 @@
 import { notFound } from "next/navigation";
 import { Suspense } from "react";
-import { getCourse, getCourses, getCourseWords } from "@/lib/learning";
+import { getCourse, getCourseWords } from "@/lib/learning";
 import { WordStudy } from "@/components/WordStudy";
-
-export function generateStaticParams() {
-  return getCourses().map((course) => ({ courseId: String(course.id) }));
-}
 
 export default function WordStudyPage({ params }: PageProps<"/courses/[courseId]">) {
   // params は Suspense の中で読む（cacheComponents で画面遷移をすぐ始めるため）

@@ -42,7 +42,13 @@ type SessionProps = {
 
 function Session({ learner, courseId, target, backHref, backLabel }: SessionProps) {
   // 出題する単語は開始時点で決めておく（評価して対象から外れても、今回の復習では最後まで出す）
-  const [words] = useState(() => pickReviewWords(courseId, target, learner.wordProgresses));
+  const [words] = useState(() =>
+    pickReviewWords(
+      courseId === "all" ? learner.courses.map((course) => course.id) : [courseId],
+      target,
+      learner.wordProgresses,
+    ),
+  );
   const [index, setIndex] = useState(0);
   const [results, setResults] = useState<Mastery[]>([]);
 

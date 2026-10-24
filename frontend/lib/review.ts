@@ -1,5 +1,5 @@
 // 復習の対象を決める処理
-import { getCourses, getCourseWords, type Mastery, type Word } from "./learning";
+import { getCourseWords, type Mastery, type Word } from "./learning";
 import type { CourseProgress, WordProgress } from "./progress";
 
 export type ReviewTarget = "weak" | "unsure" | "both";
@@ -14,14 +14,9 @@ function matches(target: ReviewTarget, mastery: Mastery) {
   return target === "both" ? mastery !== "mastered" : mastery === target;
 }
 
-// courseId が "all" なら全コースから。同じ単語が複数のコースにあっても1回だけ出す
-export function pickReviewWords(
-  courseId: number | "all",
-  target: ReviewTarget,
-  wordProgresses: WordProgress[],
-): Word[] {
-  const courseWords =
-    courseId === "all" ? getCourses().flatMap((c) => getCourseWords(c.id)) : getCourseWords(courseId);
+// 指定したコースの単語から選ぶ。同じ単語が複数のコースにあっても1回だけ出す
+export function pickReviewWords(courseIds: number[], target: ReviewTarget, wordProgresses: WordProgress[]): Word[] {
+  const courseWords = courseIds.flatMap((id) => getCourseWords(id));
   const unique = [...new Map(courseWords.map((w) => [w.id, w])).values()];
   return unique.filter((word) => {
     const progress = wordProgresses.find((wp) => wp.word_id === word.id);

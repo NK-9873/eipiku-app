@@ -54,7 +54,7 @@ func (h *CourseHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 // Get は GET /courses/{id}
 func (h *CourseHandler) Get(w http.ResponseWriter, r *http.Request) {
-	id, ok := pathID(w, r)
+	id, ok := pathID(w, r, "id")
 	if !ok {
 		return
 	}
@@ -68,7 +68,7 @@ func (h *CourseHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 // Update は PUT /courses/{id}
 func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
-	id, ok := pathID(w, r)
+	id, ok := pathID(w, r, "id")
 	if !ok {
 		return
 	}
@@ -86,7 +86,7 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 // Delete は DELETE /courses/{id}
 func (h *CourseHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	id, ok := pathID(w, r)
+	id, ok := pathID(w, r, "id")
 	if !ok {
 		return
 	}
@@ -99,7 +99,7 @@ func (h *CourseHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 // ListWords は GET /courses/{id}/words
 func (h *CourseHandler) ListWords(w http.ResponseWriter, r *http.Request) {
-	id, ok := pathID(w, r)
+	id, ok := pathID(w, r, "id")
 	if !ok {
 		return
 	}
@@ -113,7 +113,7 @@ func (h *CourseHandler) ListWords(w http.ResponseWriter, r *http.Request) {
 
 // ReplaceWords は PUT /courses/{id}/words。body は {"word_ids": [3, 1, 2]}（この順が出題順）
 func (h *CourseHandler) ReplaceWords(w http.ResponseWriter, r *http.Request) {
-	id, ok := pathID(w, r)
+	id, ok := pathID(w, r, "id")
 	if !ok {
 		return
 	}

@@ -52,7 +52,7 @@ func (h *WordHandler) Create(w http.ResponseWriter, r *http.Request) {
 
 // Get は GET /words/{id}
 func (h *WordHandler) Get(w http.ResponseWriter, r *http.Request) {
-	id, ok := pathID(w, r)
+	id, ok := pathID(w, r, "id")
 	if !ok {
 		return
 	}
@@ -66,7 +66,7 @@ func (h *WordHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 // Update は PUT /words/{id}
 func (h *WordHandler) Update(w http.ResponseWriter, r *http.Request) {
-	id, ok := pathID(w, r)
+	id, ok := pathID(w, r, "id")
 	if !ok {
 		return
 	}
@@ -84,7 +84,7 @@ func (h *WordHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 // Delete は DELETE /words/{id}
 func (h *WordHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	id, ok := pathID(w, r)
+	id, ok := pathID(w, r, "id")
 	if !ok {
 		return
 	}

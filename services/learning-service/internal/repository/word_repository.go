@@ -13,6 +13,7 @@ import (
 // WordRepository は words テーブルの読み書き
 type WordRepository interface {
 	FindAll(ctx context.Context) ([]model.Word, error)
+	Count(ctx context.Context) (int, error)
 	// FindByID は見つからなければ apperr.ErrNotFound を返す
 	FindByID(ctx context.Context, id uint64) (model.Word, error)
 	// FindExistingIDs は ids のうち words テーブルにあるものだけを返す
@@ -55,6 +56,12 @@ func (r *mysqlWordRepository) FindAll(ctx context.Context) ([]model.Word, error)
 		words = append(words, w)
 	}
 	return words, rows.Err()
+}
+
+func (r *mysqlWordRepository) Count(ctx context.Context) (int, error) {
+	var n int
+	err := r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM words").Scan(&n)
+	return n, err
 }
 
 func (r *mysqlWordRepository) FindByID(ctx context.Context, id uint64) (model.Word, error) {

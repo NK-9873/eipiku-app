@@ -21,11 +21,14 @@ func main() {
 
 	courseRepo := repository.NewCourseRepository(conn)
 	wordRepo := repository.NewWordRepository(conn)
+	progressRepo := repository.NewProgressRepository(conn)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", handler.Health)
 	handler.NewCourseHandler(service.NewCourseService(courseRepo, wordRepo)).Register(mux)
 	handler.NewWordHandler(service.NewWordService(wordRepo)).Register(mux)
+	// /me 以下は X-User-ID でユーザーを特定する（4回目で JWT の検証に置き換える）
+	handler.NewProgressHandler(service.NewProgressService(progressRepo, courseRepo, wordRepo)).Register(mux, middleware.UserFromHeader)
 
 	// 許可するオリジンは CORS_ALLOWED_ORIGIN で変えられる（未設定ならローカルの Next.js）
 	origin := os.Getenv("CORS_ALLOWED_ORIGIN")

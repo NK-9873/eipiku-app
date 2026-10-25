@@ -44,11 +44,11 @@ func writeError(w http.ResponseWriter, err error) {
 	}
 }
 
-// pathID は URL の {id} を取り出す。数字でなければ 400 を書いて ok=false を返す
-func pathID(w http.ResponseWriter, r *http.Request) (id uint64, ok bool) {
-	id, err := strconv.ParseUint(r.PathValue("id"), 10, 64)
+// pathID は URL の {name} を ID として取り出す。数字でなければ 400 を書いて ok=false を返す
+func pathID(w http.ResponseWriter, r *http.Request, name string) (id uint64, ok bool) {
+	id, err := strconv.ParseUint(r.PathValue(name), 10, 64)
 	if err != nil || id == 0 {
-		writeBadRequest(w, "id が不正です")
+		writeBadRequest(w, name+" が不正です")
 		return 0, false
 	}
 	return id, true

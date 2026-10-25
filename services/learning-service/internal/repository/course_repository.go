@@ -23,6 +23,8 @@ type CourseRepository interface {
 	FindWords(ctx context.Context, courseID uint64) ([]model.CourseWord, error)
 	// ReplaceWords はコースの単語を wordIDs の並び順でまとめて置き換える（トランザクション）
 	ReplaceWords(ctx context.Context, courseID uint64, wordIDs []uint64) error
+	// CountWords はコースごとの単語数を返す（単語が0件のコースは含まれない）
+	CountWords(ctx context.Context) (map[uint64]int, error)
 }
 
 type mysqlCourseRepository struct {
@@ -149,6 +151,25 @@ func (r *mysqlCourseRepository) ReplaceWords(ctx context.Context, courseID uint6
 		}
 	}
 	return tx.Commit()
+}
+
+func (r *mysqlCourseRepository) CountWords(ctx context.Context) (map[uint64]int, error) {
+	rows, err := r.db.QueryContext(ctx, "SELECT course_id, COUNT(*) FROM course_words GROUP BY course_id")
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	counts := map[uint64]int{}
+	for rows.Next() {
+		var courseID uint64
+		var n int
+		if err := rows.Scan(&courseID, &n); err != nil {
+			return nil, err
+		}
+		counts[courseID] = n
+	}
+	return counts, rows.Err()
 }
 
 // requireAffected は UPDATE / DELETE の対象が0件なら apperr.ErrNotFound を返す

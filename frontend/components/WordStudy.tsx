@@ -2,11 +2,8 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { MASTERY_LABELS, type Course, type Mastery, type Word } from "@/lib/learning";
-import { saveCourseProgress, saveWordProgress } from "@/lib/progress";
-import { isInterrupted } from "@/lib/review";
-import { CURRENT_USER_ID } from "@/lib/user";
-import { useLearner, type LearnerData } from "./useLearner";
+import { recordStudy } from "@/lib/actions";
+import { MASTERY_LABELS, type Course, type ImageType, type Mastery, type Word } from "@/lib/types";
 import { WordCard } from "./WordCard";
 
 const MASTERIES: Mastery[] = ["weak", "unsure", "mastered"];
@@ -14,36 +11,26 @@ const MASTERIES: Mastery[] = ["weak", "unsure", "mastered"];
 type Props = {
   course: Course;
   words: Word[];
+  // 中断していればその位置から（サーバーで GET /me/course-progresses から決める）
+  startIndex: number;
+  imageType: ImageType;
 };
 
-export function WordStudy({ course, words }: Props) {
-  const learner = useLearner();
-  if (!learner) {
-    return <p className="py-10 text-center text-sm text-zinc-400">読み込み中…</p>;
-  }
-  return <StudySession course={course} words={words} learner={learner} />;
-}
-
-function StudySession({ course, words, learner }: Props & { learner: LearnerData }) {
-  // 中断していれば続きから、そうでなければ最初から
-  const [startIndex] = useState(() =>
-    isInterrupted(course.id, learner.courseProgresses)
-      ? learner.courseProgresses.find((cp) => cp.course_id === course.id)!.current_position
-      : 0,
-  );
+export function WordStudy({ course, words, startIndex, imageType }: Props) {
   // 何語目を出しているか（0 始まり）
   const [index, setIndex] = useState(startIndex);
   // 今回の学習で付けた評価（終了画面の集計用）
   const [results, setResults] = useState<Record<number, Mastery>>({});
+  const [saveError, setSaveError] = useState(false);
 
   const word = words[index];
   const finished = index >= words.length;
 
   function rate(mastery: Mastery) {
     const next = index + 1;
-    saveWordProgress(CURRENT_USER_ID, word.id, mastery);
-    // 1語ごとに中断位置を保存しておけば、途中終了や画面を閉じたときもそこから再開できる
-    saveCourseProgress(CURRENT_USER_ID, course.id, next);
+    // 待たずに次の単語へ進み、保存は裏で行う。
+    // 1語ごとに中断位置も保存するので、途中終了や画面を閉じたときもそこから再開できる
+    recordStudy({ courseId: course.id, wordId: word.id, mastery, nextPosition: next }).catch(() => setSaveError(true));
     setResults((prev) => ({ ...prev, [word.id]: mastery }));
     setIndex(next);
   }
@@ -67,12 +54,16 @@ function StudySession({ course, words, learner }: Props & { learner: LearnerData
         </div>
       </header>
 
-      {finished ? (
-        <Summary
-          learnedCount={words.length - startIndex}
-          results={results}
-          resumed={startIndex > 0}
-        />
+      {saveError && (
+        <p role="alert" className="mt-3 rounded-xl bg-rose-50 px-4 py-2 text-sm text-rose-700">
+          学習の記録を保存できませんでした。通信状況を確かめて、もう一度お試しください。
+        </p>
+      )}
+
+      {words.length === 0 ? (
+        <p className="mt-10 text-center text-zinc-500">このコースにはまだ単語がありません</p>
+      ) : finished ? (
+        <Summary learnedCount={words.length - startIndex} results={results} resumed={startIndex > 0} />
       ) : (
         <>
           <p className="mt-2 text-sm text-zinc-500">
@@ -82,7 +73,7 @@ function StudySession({ course, words, learner }: Props & { learner: LearnerData
           <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-zinc-200">
             <div className="h-full bg-orange-400 transition-all" style={{ width: `${(index / words.length) * 100}%` }} />
           </div>
-          <WordCard key={word.id} word={word} imageType={learner.user.image_type} onRate={rate} />
+          <WordCard key={word.id} word={word} imageType={imageType} onRate={rate} />
         </>
       )}
     </main>

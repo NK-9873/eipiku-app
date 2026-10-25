@@ -1,30 +1,8 @@
-// ログイン中のユーザーの取得と設定の保存。
-// ログイン機能ができるまでは、モックの users の id=1 に固定している。
-import { users, type User } from "@/data/mock-data";
-import { readStore, writeStore } from "./local-store";
+// ログイン中のユーザーの取得（user-service）。サーバー側だけで使う
+import "server-only";
+import { cache } from "react";
+import { apiFetch } from "./api";
+import type { User } from "./types";
 
-export type { User };
-export type ImageType = User["image_type"];
-
-export const CURRENT_USER_ID = 1;
-
-export const IMAGE_TYPE_LABELS: Record<ImageType, string> = {
-  photo: "写真",
-  illustration: "イラスト",
-};
-
-// users.image_type だけ localStorage で上書きできるようにしている
-type StoredUserSettings = Record<number, { image_type: ImageType }>;
-const SETTINGS_KEY = "user_settings";
-
-export async function getCurrentUser(): Promise<User> {
-  const user = users.find((u) => u.id === CURRENT_USER_ID);
-  if (!user) throw new Error(`id=${CURRENT_USER_ID} のユーザーがモックデータにありません`);
-  const settings = readStore<StoredUserSettings>(SETTINGS_KEY, {})[user.id];
-  return { ...user, ...settings };
-}
-
-export async function updateImageType(imageType: ImageType): Promise<void> {
-  const settings = readStore<StoredUserSettings>(SETTINGS_KEY, {});
-  writeStore(SETTINGS_KEY, { ...settings, [CURRENT_USER_ID]: { image_type: imageType } });
-}
+// ヘッダーと画面の両方で使うので、1回のリクエストの中では1回だけ API を呼ぶ
+export const getMe = cache(() => apiFetch<User>("user", "/me"));

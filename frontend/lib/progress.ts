@@ -1,37 +1,22 @@
-// 学習の記録（word_progresses / course_progresses）の読み書き。
-// テーブルと同じ形で localStorage に保存している。API ができたら中身を fetch に差し替える。
-import type { CourseProgress, WordProgress } from "@/data/mock-data";
-import type { Mastery } from "./learning";
-import { now, readStore, writeStore } from "./local-store";
+// 学習の記録（習得度・進み具合）の取得（learning-service）。サーバー側だけで使う。
+// 保存は画面から呼ぶので lib/actions.ts にある
+import "server-only";
+import { apiFetch } from "./api";
+import type { CourseProgress, Mastery, ReviewWord, Summary } from "./types";
 
-export type { CourseProgress, WordProgress };
-
-const WORD_KEY = "word_progresses";
-const COURSE_KEY = "course_progresses";
-
-export async function getWordProgresses(userId: number): Promise<WordProgress[]> {
-  return readStore<WordProgress[]>(WORD_KEY, []).filter((wp) => wp.user_id === userId);
+export function getSummary() {
+  return apiFetch<Summary>("learning", "/me/summary");
 }
 
-// UNIQUE (user_id, word_id) なので、あれば上書き・なければ追加する
-export async function saveWordProgress(userId: number, wordId: number, mastery: Mastery): Promise<void> {
-  const rows = readStore<WordProgress[]>(WORD_KEY, []).filter(
-    (wp) => !(wp.user_id === userId && wp.word_id === wordId),
-  );
-  writeStore(WORD_KEY, [...rows, { user_id: userId, word_id: wordId, mastery, updated_at: now() }]);
+export function getCourseProgresses() {
+  return apiFetch<CourseProgress[]>("learning", "/me/course-progresses");
 }
 
-export async function getCourseProgresses(userId: number): Promise<CourseProgress[]> {
-  return readStore<CourseProgress[]>(COURSE_KEY, []).filter((cp) => cp.user_id === userId);
-}
-
-// current_position は「何語目まで学習したか」。0 なら未学習、単語数と同じなら最後まで終わっている
-export async function saveCourseProgress(userId: number, courseId: number, currentPosition: number): Promise<void> {
-  const rows = readStore<CourseProgress[]>(COURSE_KEY, []).filter(
-    (cp) => !(cp.user_id === userId && cp.course_id === courseId),
-  );
-  writeStore(COURSE_KEY, [
-    ...rows,
-    { user_id: userId, course_id: courseId, current_position: currentPosition, updated_at: now() },
-  ]);
+// 復習対象の単語。courseId を省略すると全コース、masteries を省略すると苦手と微妙
+export function getReviewWords(filter: { courseId?: number; masteries?: Mastery[] } = {}) {
+  const params = new URLSearchParams();
+  if (filter.courseId) params.set("course_id", String(filter.courseId));
+  if (filter.masteries?.length) params.set("mastery", filter.masteries.join(","));
+  const query = params.size ? `?${params}` : "";
+  return apiFetch<ReviewWord[]>("learning", `/me/review-words${query}`);
 }

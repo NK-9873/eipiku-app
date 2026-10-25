@@ -14,7 +14,7 @@ import {
   type User,
   type WordProgress,
 } from "@/data/mock-data";
-import type { Course, CourseWord, Word } from "@/lib/learning";
+import type { Course, CourseWord, Word } from "@/data/mock-data";
 
 type AdminStore = {
   courses: Course[];
@@ -29,6 +29,15 @@ type AdminStore = {
   saveWord: (word: Omit<Word, "id"> & { id: number | null }) => void;
   deleteWord: (wordId: number) => void;
 };
+
+// course_words を出題順に並べて単語に変換する（編集中のデータを渡して使う）
+export function pickCourseWords(courseId: number, courseWords: CourseWord[], allWords: Word[]): Word[] {
+  return courseWords
+    .filter((cw) => cw.course_id === courseId)
+    .sort((a, b) => a.display_order - b.display_order)
+    .map((cw) => allWords.find((word) => word.id === cw.word_id))
+    .filter((word): word is Word => word !== undefined);
+}
 
 const AdminStoreContext = createContext<AdminStore | null>(null);
 

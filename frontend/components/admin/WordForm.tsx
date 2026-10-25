@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import type { Word } from "@/lib/learning";
+import type { Word } from "@/data/mock-data";
 import { useAdminStore } from "./AdminStore";
 import { BackLink, cardClass, Field, inputClass, NotFoundMessage, PageHeader, primaryButtonClass, secondaryButtonClass } from "./ui";
 

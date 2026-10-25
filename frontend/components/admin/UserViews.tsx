@@ -3,9 +3,8 @@
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import type { User } from "@/data/mock-data";
-import { MASTERY_LABELS, pickCourseWords, type Mastery } from "@/lib/learning";
-import { IMAGE_TYPE_LABELS } from "@/lib/user";
-import { useAdminStore } from "./AdminStore";
+import { IMAGE_TYPE_LABELS, MASTERY_LABELS, type Mastery } from "@/lib/types";
+import { pickCourseWords, useAdminStore } from "./AdminStore";
 import { BackLink, cardClass, NotFoundMessage, PageHeader } from "./ui";
 
 const MASTERY_COLORS: Record<Mastery, string> = {

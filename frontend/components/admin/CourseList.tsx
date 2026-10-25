@@ -1,8 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { pickCourseWords } from "@/lib/learning";
-import { useAdminStore } from "./AdminStore";
+import { pickCourseWords, useAdminStore } from "./AdminStore";
 import { cardClass, dangerButtonClass, PageHeader, primaryButtonClass, smallButtonClass } from "./ui";
 
 export function CourseList() {

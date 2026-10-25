@@ -1,30 +1,33 @@
 "use client";
 
-import { useState } from "react";
-import { IMAGE_TYPE_LABELS, updateImageType, type ImageType } from "@/lib/user";
-import { useLearner, type LearnerData } from "./useLearner";
+import { useState, useTransition } from "react";
+import { updateImageType } from "@/lib/actions";
+import { IMAGE_TYPE_LABELS, type ImageType, type User } from "@/lib/types";
 
 const IMAGE_TYPES: { value: ImageType; description: string; icon: string }[] = [
   { value: "photo", description: "実物の写真で覚える", icon: "📷" },
   { value: "illustration", description: "やさしいイラストで覚える", icon: "🎨" },
 ];
 
-export function Settings() {
-  const learner = useLearner();
-  if (!learner) {
-    return <p className="py-10 text-center text-sm text-zinc-400">読み込み中…</p>;
-  }
-  return <SettingsForm learner={learner} />;
-}
+// 設定（GET /me で表示し、PUT /me/settings で画像タイプを保存する）
+export function Settings({ user }: { user: User }) {
+  const [imageType, setImageType] = useState(user.image_type);
+  const [message, setMessage] = useState<{ ok: boolean; text: string } | null>(null);
+  const [pending, startTransition] = useTransition();
 
-function SettingsForm({ learner }: { learner: LearnerData }) {
-  const [imageType, setImageType] = useState(learner.user.image_type);
-  const [saved, setSaved] = useState(false);
-
-  async function select(value: ImageType) {
+  function select(value: ImageType) {
+    const previous = imageType;
     setImageType(value);
-    await updateImageType(value);
-    setSaved(true);
+    setMessage(null);
+    startTransition(async () => {
+      try {
+        await updateImageType(value);
+        setMessage({ ok: true, text: "保存しました" });
+      } catch {
+        setImageType(previous); // 保存できなかったら元に戻す
+        setMessage({ ok: false, text: "保存できませんでした。もう一度お試しください" });
+      }
+    });
   }
 
   return (
@@ -42,8 +45,9 @@ function SettingsForm({ learner }: { learner: LearnerData }) {
                 key={type.value}
                 type="button"
                 onClick={() => select(type.value)}
+                disabled={pending}
                 aria-pressed={selected}
-                className={`rounded-2xl border p-4 text-center transition ${selected ? "border-orange-400 bg-orange-50" : "border-zinc-200 hover:border-orange-200"}`}
+                className={`rounded-2xl border p-4 text-center transition disabled:opacity-60 ${selected ? "border-orange-400 bg-orange-50" : "border-zinc-200 hover:border-orange-200"}`}
               >
                 <span className="text-3xl">{type.icon}</span>
                 <p className={`mt-2 font-semibold ${selected ? "text-orange-600" : ""}`}>{IMAGE_TYPE_LABELS[type.value]}</p>
@@ -52,16 +56,18 @@ function SettingsForm({ learner }: { learner: LearnerData }) {
             );
           })}
         </div>
-        <p className="mt-3 h-5 text-sm text-emerald-600">{saved && "保存しました"}</p>
+        <p className={`mt-3 h-5 text-sm ${message?.ok ? "text-emerald-600" : "text-rose-600"}`} role="status">
+          {pending ? "保存中…" : message?.text}
+        </p>
       </section>
 
       <section className="mt-4 rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
         <h2 className="font-semibold">アカウント</h2>
         <dl className="mt-3 grid grid-cols-[7rem_1fr] gap-y-2 text-sm">
           <dt className="text-zinc-500">名前</dt>
-          <dd>{learner.user.name}</dd>
+          <dd>{user.name}</dd>
           <dt className="text-zinc-500">メールアドレス</dt>
-          <dd className="break-all">{learner.user.email}</dd>
+          <dd className="break-all">{user.email}</dd>
         </dl>
       </section>
     </main>

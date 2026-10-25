@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { pickCourseWords, type Course } from "@/lib/learning";
-import { useAdminStore } from "./AdminStore";
+import type { Course } from "@/data/mock-data";
+import { pickCourseWords, useAdminStore } from "./AdminStore";
 import {
   BackLink,
   cardClass,

@@ -2,8 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
-import { MASTERY_LABELS, type Mastery, type Word } from "@/lib/learning";
-import { IMAGE_TYPE_LABELS, type ImageType } from "@/lib/user";
+import { IMAGE_TYPE_LABELS, MASTERY_LABELS, type ImageType, type Mastery, type Word } from "@/lib/types";
 
 export const MASTERY_STYLES: Record<Mastery, string> = {
   weak: "bg-rose-500 hover:bg-rose-600",
@@ -19,7 +18,7 @@ type Props = {
   onRate: (mastery: Mastery) => void;
 };
 
-// 画像と英単語 → タップで訳と例文 → 苦手・微妙・覚えた で評価、の1語分。
+// 画像と英単語 → タップで訳・例文・例文の訳 → 苦手・微妙・覚えた で評価、の1語分。
 // 単語が変わったら表示を戻したいので、呼び出し側で key={word.id} を付ける
 export function WordCard({ word, imageType, onRate }: Props) {
   const [revealed, setRevealed] = useState(false);
@@ -38,7 +37,8 @@ export function WordCard({ word, imageType, onRate }: Props) {
         {revealed ? (
           <div className="mt-4">
             <p className="text-2xl font-semibold text-orange-500">{word.japanese}</p>
-            {word.example && <p className="mt-3 text-zinc-600">{word.example}</p>}
+            {word.example && <p className="mt-3 text-zinc-700">{word.example}</p>}
+            {word.example_japanese && <p className="mt-1 text-sm text-zinc-500">{word.example_japanese}</p>}
           </div>
         ) : (
           <p className="mt-6 text-sm text-zinc-400">タップして意味を見る</p>
@@ -63,7 +63,8 @@ export function WordCard({ word, imageType, onRate }: Props) {
   );
 }
 
-// 設定の画像タイプに合わせて写真かイラストを出す。画像ファイルがまだ無いときはプレースホルダー
+// 設定の画像タイプに合わせて写真かイラストを出す。
+// URL は learning-service の POST /images が返したもの。登録されていない・読み込めないときはプレースホルダー
 function WordImage({ word, imageType }: { word: Word; imageType: ImageType }) {
   const src = imageType === "photo" ? word.photo_path : word.illustration_path;
   const [failedSrc, setFailedSrc] = useState<string | null>(null);

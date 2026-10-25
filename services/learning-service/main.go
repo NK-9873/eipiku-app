@@ -19,11 +19,13 @@ func main() {
 	}
 	defer conn.Close()
 
-	courseHandler := handler.NewCourseHandler(service.NewCourseService(repository.NewCourseRepository(conn)))
+	courseRepo := repository.NewCourseRepository(conn)
+	wordRepo := repository.NewWordRepository(conn)
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", handler.Health)
-	mux.HandleFunc("GET /courses", courseHandler.List)
+	handler.NewCourseHandler(service.NewCourseService(courseRepo, wordRepo)).Register(mux)
+	handler.NewWordHandler(service.NewWordService(wordRepo)).Register(mux)
 
 	// 許可するオリジンは CORS_ALLOWED_ORIGIN で変えられる（未設定ならローカルの Next.js）
 	origin := os.Getenv("CORS_ALLOWED_ORIGIN")

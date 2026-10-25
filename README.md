@@ -33,6 +33,13 @@ cp frontend/.env.local.example frontend/.env.local
 各 .env の `change_me` をローカル用のパスワードに書き換える。
 サービス側の `DB_PASSWORD` は、リポジトリ直下の .env の対応するパスワードと同じ値にする。
 
+`JWT_SECRET`（ログイン用トークンの署名の鍵）は32文字以上のランダムな文字列にし、
+user-service と learning-service の .env で**同じ値**にする。次のコマンドで作れる。
+
+```
+openssl rand -base64 48
+```
+
 ## バックエンドの起動・停止
 
 ```
@@ -73,7 +80,16 @@ docker run --rm -v "$(pwd)/services/learning-service/migrations:/migrations" --n
 
 ```
 docker compose exec -T learning-db sh -c 'mysql -u learning_app -p"$MYSQL_PASSWORD" learning' < services/learning-service/seeds/seed.sql
+docker compose exec -T users-db sh -c 'mysql -u users_app -p"$MYSQL_PASSWORD" users' < services/user-service/seeds/seed.sql
 ```
+
+user-service の seed では管理者ユーザーが1人登録される。
+
+| メールアドレス | パスワード | role |
+|---|---|---|
+| admin@example.com | eipiku-admin-dev | admin |
+
+**このパスワードはローカル開発用。** リポジトリに公開されているので、本番などローカル以外の環境では使わないこと。
 
 ### DB に接続して中身を見る
 

@@ -16,7 +16,7 @@ export default function MainLayout({ children }: LayoutProps<"/">) {
 
 async function HeaderWithUser() {
   const me = await getMe();
-  return <AppHeader userName={me.name} />;
+  return <AppHeader userName={me.name} isAdmin={me.role === "admin"} />;
 }
 
 function HeaderPlaceholder() {

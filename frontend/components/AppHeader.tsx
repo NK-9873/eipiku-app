@@ -15,8 +15,8 @@ function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" || pathname.startsWith("/courses") : pathname.startsWith(href);
 }
 
-// userName が null のあいだ（ユーザー情報の読み込み中）は名前を出さない
-export function AppHeader({ userName }: { userName: string | null }) {
+// userName が null のあいだ（ユーザー情報の読み込み中）は名前を出さない。管理画面へのリンクは管理者のときだけ
+export function AppHeader({ userName, isAdmin = false }: { userName: string | null; isAdmin?: boolean }) {
   const pathname = usePathname();
 
   return (
@@ -38,6 +38,11 @@ export function AppHeader({ userName }: { userName: string | null }) {
               {item.label}
             </Link>
           ))}
+          {isAdmin && (
+            <Link href="/admin" className="rounded-full px-2.5 py-1 font-semibold text-orange-600 hover:bg-orange-50">
+              管理画面
+            </Link>
+          )}
           <form action={logout} className="ml-auto">
             <button type="submit" className="rounded-full px-2.5 py-1 text-zinc-400 hover:bg-zinc-100">
               ログアウト

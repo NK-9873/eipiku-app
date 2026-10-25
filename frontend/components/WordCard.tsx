@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { useImageError } from "./useImageError";
 import { IMAGE_TYPE_LABELS, MASTERY_LABELS, type ImageType, type Mastery, type Word } from "@/lib/types";
 
 export const MASTERY_STYLES: Record<Mastery, string> = {
@@ -67,19 +68,20 @@ export function WordCard({ word, imageType, onRate }: Props) {
 // URL は learning-service の POST /images が返したもの。登録されていない・読み込めないときはプレースホルダー
 function WordImage({ word, imageType }: { word: Word; imageType: ImageType }) {
   const src = imageType === "photo" ? word.photo_path : word.illustration_path;
-  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const [failed, imageRef, onImageError] = useImageError(src);
 
   return (
     <div className="relative flex aspect-square w-full max-w-64 flex-col items-center justify-center overflow-hidden rounded-2xl bg-zinc-100 text-zinc-400">
-      {src && failedSrc !== src ? (
+      {src && !failed ? (
         <Image
+          ref={imageRef}
           src={src}
           alt={word.english}
           fill
           sizes="256px"
           unoptimized
           className="object-cover"
-          onError={() => setFailedSrc(src)}
+          onError={onImageError}
         />
       ) : (
         <>

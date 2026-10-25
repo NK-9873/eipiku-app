@@ -1,12 +1,18 @@
 import { Suspense } from "react";
-import { EditWord } from "@/components/admin/WordForm";
-import { Loading } from "@/components/admin/ui";
+import { WordForm } from "@/components/admin/WordForm";
+import { Loading, NotFoundMessage } from "@/components/admin/ui";
+import { getWord, orNotFound } from "@/lib/admin";
 
-export default function AdminEditWordPage() {
-  // 管理画面で追加した単語の id は事前に分からないので、useParams を Suspense で包む
+export default function AdminEditWordPage({ params }: PageProps<"/admin/words/[wordId]/edit">) {
   return (
     <Suspense fallback={<Loading />}>
-      <EditWord />
+      <EditWord params={params} />
     </Suspense>
   );
+}
+
+async function EditWord({ params }: Pick<PageProps<"/admin/words/[wordId]/edit">, "params">) {
+  const word = await orNotFound(getWord(Number((await params).wordId)));
+  if (!word) return <NotFoundMessage backHref="/admin/words">単語が見つかりません。削除された可能性があります</NotFoundMessage>;
+  return <WordForm key={word.id} word={word} />;
 }

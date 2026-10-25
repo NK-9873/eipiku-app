@@ -24,7 +24,7 @@ export class ApiError extends Error {
 
 type Options = {
   method?: "GET" | "POST" | "PUT" | "DELETE";
-  body?: unknown;
+  body?: unknown; // JSON にして送る。FormData ならそのまま multipart/form-data で送る
   // ログイン・新規登録のようにトークンが要らない呼び出しは false
   auth?: boolean;
 };
@@ -35,8 +35,9 @@ export async function apiFetch<T>(service: keyof typeof SERVICES, path: string, 
     throw new Error(`${service === "user" ? "USER_API_URL" : "LEARNING_API_URL"} が設定されていません（frontend/.env.local を確認してください）`);
   }
 
+  const isForm = options.body instanceof FormData;
   const headers: Record<string, string> = {};
-  if (options.body !== undefined) headers["Content-Type"] = "application/json";
+  if (options.body !== undefined && !isForm) headers["Content-Type"] = "application/json";
   if (options.auth !== false) {
     const token = (await cookies()).get(TOKEN_COOKIE)?.value;
     if (!token) redirect("/login");
@@ -48,7 +49,7 @@ export async function apiFetch<T>(service: keyof typeof SERVICES, path: string, 
     res = await fetch(baseURL + path, {
       method: options.method ?? "GET",
       headers,
-      body: options.body === undefined ? undefined : JSON.stringify(options.body),
+      body: options.body === undefined ? undefined : isForm ? (options.body as FormData) : JSON.stringify(options.body),
       cache: "no-store",
     });
   } catch {

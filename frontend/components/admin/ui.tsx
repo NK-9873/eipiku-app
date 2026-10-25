@@ -57,3 +57,29 @@ export function NotFoundMessage({ backHref, children }: { backHref: string; chil
 export function Loading() {
   return <p className="py-10 text-center text-sm text-zinc-400">読み込み中…</p>;
 }
+
+// API のエラーを画面に出す（details は項目ごとの理由）
+export function ErrorBox({ error, details }: { error?: string; details?: string[] }) {
+  if (!error) return null;
+  return (
+    <div role="alert" className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700">
+      <p className="font-semibold">{error}</p>
+      {details && details.length > 0 && (
+        <ul className="mt-1 list-disc pl-5">
+          {details.map((d) => (
+            <li key={d}>{d}</li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// 保存・削除が終わったことを知らせる
+export function SavedNotice({ children }: { children: ReactNode }) {
+  return (
+    <p role="status" className="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+      {children}
+    </p>
+  );
+}

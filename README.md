@@ -121,6 +121,10 @@ npm run dev
 
 http://localhost:3000 を開く。停止は `Ctrl+C`。
 
+画面を使うには、先にバックエンドを起動しておく。開くとログイン画面になるので、新規登録するか、seed の管理者（admin@example.com）でログインする。
+フロントは Next.js のサーバー側から API を呼ぶ。API の URL は `frontend/.env.local` の `USER_API_URL`・`LEARNING_API_URL` で指定する。
+ログインのトークンは HttpOnly の Cookie（`eipiku_token`、24時間で期限切れ）に入れている。
+
 ## DB
 
 ### テーブル作成（migration）

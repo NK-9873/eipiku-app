@@ -85,6 +85,17 @@ export type Summary = {
   }[];
 };
 
+// GET /admin/users/{id}/progress（管理者用）
+export type UserProgress = {
+  user_id: number;
+  word_progresses: { user_id: number; word_id: number; mastery: Mastery; updated_at: string }[];
+  course_progresses: CourseProgress[];
+};
+
+// 画像として受け付けるもの（learning-service の POST /images と同じ）
+export const IMAGE_ACCEPT = ["image/jpeg", "image/png", "image/webp"];
+export const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
 // API のエラー（{"error": "...", "details": [...]}）を画面に出すための形
 export type FormState = {
   error?: string;

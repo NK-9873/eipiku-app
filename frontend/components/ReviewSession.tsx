@@ -1,62 +1,32 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { MASTERY_LABELS, type Mastery } from "@/lib/learning";
-import { saveWordProgress } from "@/lib/progress";
-import { pickReviewWords, REVIEW_TARGETS, type ReviewTarget } from "@/lib/review";
-import { CURRENT_USER_ID } from "@/lib/user";
-import { useLearner, type LearnerData } from "./useLearner";
+import { saveWordProgress } from "@/lib/actions";
+import { MASTERY_LABELS, type ImageType, type Mastery, type ReviewWord } from "@/lib/types";
 import { WordCard } from "./WordCard";
 
 const MASTERIES: Mastery[] = ["weak", "unsure", "mastered"];
 
-// URL: /review/session?course=all|<id>&target=weak|unsure|both&back=mypage|course
-export function ReviewSession() {
-  const learner = useLearner();
-  const params = useSearchParams();
-
-  const courseParam = params.get("course");
-  const courseId = courseParam && courseParam !== "all" ? Number(courseParam) : "all";
-  const target = (REVIEW_TARGETS.find((t) => t.value === params.get("target"))?.value ?? "both") as ReviewTarget;
-  // 単語学習から来たときは学習の続き（中断位置）へ、マイページから来たときはマイページへ戻る
-  const backHref = params.get("back") === "course" && courseId !== "all" ? `/courses/${courseId}` : "/mypage";
-  const backLabel = backHref === "/mypage" ? "マイページに戻る" : "学習を再開する";
-
-  if (!learner) {
-    return <p className="py-10 text-center text-sm text-zinc-400">読み込み中…</p>;
-  }
-  return (
-    <Session learner={learner} courseId={courseId} target={target} backHref={backHref} backLabel={backLabel} />
-  );
-}
-
-type SessionProps = {
-  learner: LearnerData;
-  courseId: number | "all";
-  target: ReviewTarget;
+type Props = {
+  words: ReviewWord[];
+  targetLabel: string;
+  imageType: ImageType;
   backHref: string;
   backLabel: string;
 };
 
-function Session({ learner, courseId, target, backHref, backLabel }: SessionProps) {
-  // 出題する単語は開始時点で決めておく（評価して対象から外れても、今回の復習では最後まで出す）
-  const [words] = useState(() =>
-    pickReviewWords(
-      courseId === "all" ? learner.courses.map((course) => course.id) : [courseId],
-      target,
-      learner.wordProgresses,
-    ),
-  );
+export function ReviewSession({ words, targetLabel, imageType, backHref, backLabel }: Props) {
   const [index, setIndex] = useState(0);
   const [results, setResults] = useState<Mastery[]>([]);
+  const [saveError, setSaveError] = useState(false);
 
   const word = words[index];
   const finished = index >= words.length;
 
   function rate(mastery: Mastery) {
-    saveWordProgress(CURRENT_USER_ID, word.id, mastery);
+    // 待たずに次の単語へ進み、習得度の更新は裏で行う
+    saveWordProgress(word.id, mastery).catch(() => setSaveError(true));
     setResults((prev) => [...prev, mastery]);
     setIndex((i) => i + 1);
   }
@@ -65,7 +35,7 @@ function Session({ learner, courseId, target, backHref, backLabel }: SessionProp
     <main className="mx-auto flex w-full max-w-md flex-1 flex-col px-4 py-6">
       <header className="flex items-center justify-between">
         <h1 className="font-semibold">
-          復習 <span className="text-sm font-normal text-zinc-500">（{REVIEW_TARGETS.find((t) => t.value === target)?.label}）</span>
+          復習 <span className="text-sm font-normal text-zinc-500">（{targetLabel}）</span>
         </h1>
         {!finished && (
           <Link href={backHref} className="rounded-full px-3 py-1 text-sm text-zinc-500 hover:bg-zinc-100">
@@ -73,6 +43,12 @@ function Session({ learner, courseId, target, backHref, backLabel }: SessionProp
           </Link>
         )}
       </header>
+
+      {saveError && (
+        <p role="alert" className="mt-3 rounded-xl bg-rose-50 px-4 py-2 text-sm text-rose-700">
+          習得度を保存できませんでした。通信状況を確かめて、もう一度お試しください。
+        </p>
+      )}
 
       {words.length === 0 ? (
         <div className="mt-10 text-center">
@@ -103,14 +79,12 @@ function Session({ learner, courseId, target, backHref, backLabel }: SessionProp
         <>
           <p className="mt-2 text-sm text-zinc-500">
             {index + 1} / {words.length}
-            <span className="ml-2">
-              前回：{MASTERY_LABELS[learner.wordProgresses.find((wp) => wp.word_id === word.id)!.mastery]}
-            </span>
+            <span className="ml-2">前回：{MASTERY_LABELS[word.mastery]}</span>
           </p>
           <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-zinc-200">
             <div className="h-full bg-orange-400 transition-all" style={{ width: `${(index / words.length) * 100}%` }} />
           </div>
-          <WordCard key={word.id} word={word} imageType={learner.user.image_type} onRate={rate} />
+          <WordCard key={word.id} word={word} imageType={imageType} onRate={rate} />
         </>
       )}
     </main>

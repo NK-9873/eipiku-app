@@ -1,63 +1,62 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-import { getCourse } from "@/lib/learning";
-import { isInterrupted, pickReviewWords, REVIEW_TARGETS, type ReviewTarget } from "@/lib/review";
-import { useLearner, type LearnerData } from "./useLearner";
+import { REVIEW_TARGETS, type ReviewTarget } from "@/lib/types";
 
-// /review            … マイページから。コースと対象を選び、終わったらマイページへ戻る
-// /review?course=1   … 単語学習から。コースは固定で対象だけ選び、終わったら学習の続きへ戻る
-export function ReviewSelect() {
-  const learner = useLearner();
-  const fixedCourseId = Number(useSearchParams().get("course")) || null;
+type Counts = { weak: number; unsure: number };
 
-  if (!learner) {
-    return <p className="py-10 text-center text-sm text-zinc-400">読み込み中…</p>;
-  }
-  return <ReviewSelectForm learner={learner} fixedCourseId={fixedCourseId} />;
+export type ReviewScope = {
+  courseId: number;
+  name: string;
+  interrupted: boolean;
+  counts: Counts;
+};
+
+type Props = {
+  scopes: ReviewScope[];
+  allCounts: Counts | null; // 「すべてのコース」の数。コース固定のときは null
+  fixedCourseId: number | null;
+};
+
+function countFor(counts: Counts, target: ReviewTarget) {
+  return target === "weak" ? counts.weak : target === "unsure" ? counts.unsure : counts.weak + counts.unsure;
 }
 
-function ReviewSelectForm({ learner, fixedCourseId }: { learner: LearnerData; fixedCourseId: number | null }) {
-  const fixedCourse = fixedCourseId ? getCourse(fixedCourseId) : undefined;
-  // 中断中のコースを先に出す（sort は安定なので、それ以外は元の順番のまま）
-  const courses = [...learner.courses].sort(
-    (a, b) =>
-      Number(isInterrupted(b.id, learner.courseProgresses)) - Number(isInterrupted(a.id, learner.courseProgresses)),
-  );
-
-  const [courseId, setCourseId] = useState<number | "all">(fixedCourse?.id ?? "all");
+export function ReviewSelect({ scopes, allCounts, fixedCourseId }: Props) {
+  const fixedScope = scopes.find((s) => s.courseId === fixedCourseId);
+  const [courseId, setCourseId] = useState<number | "all">(fixedScope?.courseId ?? "all");
   const [target, setTarget] = useState<ReviewTarget>("both");
 
-  const count = (c: number | "all", t: ReviewTarget) =>
-    pickReviewWords(c === "all" ? learner.courses.map((course) => course.id) : [c], t, learner.wordProgresses).length;
-  const selectedCount = count(courseId, target);
-  const back = fixedCourse ? "course" : "mypage";
-  const backHref = fixedCourse ? `/courses/${fixedCourse.id}` : "/mypage";
+  const selectedCounts = courseId === "all" ? allCounts : scopes.find((s) => s.courseId === courseId)?.counts;
+  const selectedCount = selectedCounts ? countFor(selectedCounts, target) : 0;
+  const back = fixedScope ? "course" : "mypage";
+  const backHref = fixedScope ? `/courses/${fixedScope.courseId}` : "/mypage";
 
   return (
     <main className="mx-auto w-full max-w-md flex-1 px-4 py-8">
       <Link href={backHref} className="mb-3 inline-block text-sm text-zinc-500 hover:text-orange-500">
-        ← {fixedCourse ? "学習に戻る" : "マイページ"}
+        ← {fixedScope ? "学習に戻る" : "マイページ"}
       </Link>
       <h1 className="text-2xl font-bold">復習する単語を選ぶ</h1>
 
       <section className="mt-6">
         <h2 className="mb-2 font-semibold">コース</h2>
-        {fixedCourse ? (
-          <p className="rounded-2xl border border-orange-300 bg-white p-4 font-semibold">{fixedCourse.name}</p>
+        {fixedScope ? (
+          <p className="rounded-2xl border border-orange-300 bg-white p-4 font-semibold">{fixedScope.name}</p>
         ) : (
           <div className="flex flex-col gap-2">
-            <Choice selected={courseId === "all"} onClick={() => setCourseId("all")} label="すべてのコース" count={count("all", target)} />
-            {courses.map((course) => (
+            {allCounts && (
+              <Choice selected={courseId === "all"} onClick={() => setCourseId("all")} label="すべてのコース" count={countFor(allCounts, target)} />
+            )}
+            {scopes.map((scope) => (
               <Choice
-                key={course.id}
-                selected={courseId === course.id}
-                onClick={() => setCourseId(course.id)}
-                label={course.name}
-                badge={isInterrupted(course.id, learner.courseProgresses) ? "中断中" : undefined}
-                count={count(course.id, target)}
+                key={scope.courseId}
+                selected={courseId === scope.courseId}
+                onClick={() => setCourseId(scope.courseId)}
+                label={scope.name}
+                badge={scope.interrupted ? "中断中" : undefined}
+                count={countFor(scope.counts, target)}
               />
             ))}
           </div>
@@ -75,7 +74,7 @@ function ReviewSelectForm({ learner, fixedCourseId }: { learner: LearnerData; fi
               className={`rounded-2xl border py-3 transition ${target === t.value ? "border-orange-400 bg-orange-50 font-semibold text-orange-600" : "border-zinc-200 bg-white text-zinc-700 hover:border-orange-200"}`}
             >
               {t.label}
-              <span className="block text-xs font-normal text-zinc-500">{count(courseId, t.value)} 語</span>
+              <span className="block text-xs font-normal text-zinc-500">{selectedCounts ? countFor(selectedCounts, t.value) : 0} 語</span>
             </button>
           ))}
         </div>
@@ -89,9 +88,7 @@ function ReviewSelectForm({ learner, fixedCourseId }: { learner: LearnerData; fi
           {selectedCount} 語を復習する
         </Link>
       ) : (
-        <p className="mt-8 rounded-2xl bg-zinc-100 py-4 text-center text-sm text-zinc-500">
-          復習する単語はありません
-        </p>
+        <p className="mt-8 rounded-2xl bg-zinc-100 py-4 text-center text-sm text-zinc-500">復習する単語はありません</p>
       )}
     </main>
   );

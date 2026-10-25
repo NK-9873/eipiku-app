@@ -17,6 +17,8 @@ func OpenFromEnv() (*sql.DB, error) {
 	cfg.Addr = os.Getenv("DB_HOST") + ":" + os.Getenv("DB_PORT")
 	cfg.DBName = os.Getenv("DB_NAME")
 	cfg.ParseTime = true
+	// UPDATE で値が変わらなくても「一致した行数」を返させる（0件なら存在しない ID と判定するため）
+	cfg.ClientFoundRows = true
 	cfg.Params = map[string]string{"charset": "utf8mb4"}
 
 	db, err := sql.Open("mysql", cfg.FormatDSN())

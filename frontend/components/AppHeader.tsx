@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { logout } from "@/lib/actions";
 
 const NAV_ITEMS = [
   { href: "/mypage", label: "マイページ" },
@@ -14,16 +15,20 @@ function isActive(pathname: string, href: string) {
   return href === "/" ? pathname === "/" || pathname.startsWith("/courses") : pathname.startsWith(href);
 }
 
-export function AppHeader() {
+// userName が null のあいだ（ユーザー情報の読み込み中）は名前を出さない。管理画面へのリンクは管理者のときだけ
+export function AppHeader({ userName, isAdmin = false }: { userName: string | null; isAdmin?: boolean }) {
   const pathname = usePathname();
 
   return (
     <header className="border-b border-orange-100 bg-white/80">
-      <div className="mx-auto flex w-full max-w-md items-center justify-between gap-2 px-4 py-3">
-        <Link href="/mypage" className="text-xl font-bold text-orange-500">
-          えいピク
-        </Link>
-        <nav className="flex items-center gap-0.5 text-sm">
+      <div className="mx-auto w-full max-w-md px-4 py-3">
+        <div className="flex items-center justify-between gap-2">
+          <Link href="/mypage" className="text-xl font-bold text-orange-500">
+            えいピク
+          </Link>
+          <span className="truncate text-sm text-zinc-500">{userName && `${userName} さん`}</span>
+        </div>
+        <nav className="mt-2 flex items-center gap-0.5 text-sm">
           {NAV_ITEMS.map((item) => (
             <Link
               key={item.href}
@@ -33,10 +38,16 @@ export function AppHeader() {
               {item.label}
             </Link>
           ))}
-          {/* TODO: ログイン機能ができたら、ここでセッションを破棄する */}
-          <Link href="/login" className="rounded-full px-2.5 py-1 text-zinc-400 hover:bg-zinc-100">
-            ログアウト
-          </Link>
+          {isAdmin && (
+            <Link href="/admin" className="rounded-full px-2.5 py-1 font-semibold text-orange-600 hover:bg-orange-50">
+              管理画面
+            </Link>
+          )}
+          <form action={logout} className="ml-auto">
+            <button type="submit" className="rounded-full px-2.5 py-1 text-zinc-400 hover:bg-zinc-100">
+              ログアウト
+            </button>
+          </form>
         </nav>
       </div>
     </header>

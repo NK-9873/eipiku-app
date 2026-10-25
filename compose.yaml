@@ -25,6 +25,9 @@ services:
     build: ./services/learning-service
     ports: ["127.0.0.1:8082:8080"]
     env_file: ./services/learning-service/.env
+    environment:
+      IMAGE_DIR: /data/images # アップロードされた画像の保存先（下の learning_images ボリューム）
+    volumes: ["learning_images:/data/images"]
     depends_on:
       learning-db:
         condition: service_healthy
@@ -46,3 +49,4 @@ services:
 volumes:
   users_data:
   learning_data:
+  learning_images:

@@ -1,72 +1,53 @@
-"use client";
-
 import Link from "next/link";
-import { useAdminStore } from "./AdminStore";
-import { cardClass, dangerButtonClass, PageHeader, primaryButtonClass, smallButtonClass } from "./ui";
+import { deleteWord } from "@/lib/admin-actions";
+import type { Word } from "@/lib/types";
+import { DeleteButton } from "./DeleteButton";
+import { Thumbnail } from "./Thumbnail";
+import { cardClass, PageHeader, primaryButtonClass, SavedNotice, smallButtonClass } from "./ui";
 
-export function WordList() {
-  const { words, courses, courseWords, deleteWord } = useAdminStore();
-
-  function coursesOf(wordId: number) {
-    return courseWords
-      .filter((cw) => cw.word_id === wordId)
-      .map((cw) => courses.find((c) => c.id === cw.course_id)?.name)
-      .filter((name) => name !== undefined);
-  }
-
-  function handleDelete(wordId: number, english: string) {
-    const used = coursesOf(wordId);
-    const note = used.length > 0 ? `\nコース（${used.join("、")}）からも外されます。` : "";
-    if (window.confirm(`単語「${english}」を削除しますか？${note}`)) deleteWord(wordId);
-  }
-
+// 単語一覧（GET /words）
+export function WordList({ words, saved }: { words: Word[]; saved?: string }) {
   return (
     <>
       <PageHeader
         title="単語管理"
         action={
           <Link href="/admin/words/new" className={primaryButtonClass}>
-            ＋ 新規登録
+            ＋ 単語を登録
           </Link>
         }
       />
+      {saved && <SavedNotice>「{saved}」を保存しました</SavedNotice>}
 
       {words.length === 0 ? (
-        <p className={`${cardClass} p-8 text-center text-zinc-500`}>単語がありません</p>
+        <p className={`${cardClass} p-8 text-center text-zinc-500`}>まだ単語がありません。「＋ 単語を登録」から追加してください</p>
       ) : (
         <ul className="flex flex-col gap-3">
-          {words.map((word) => {
-            const used = coursesOf(word.id);
-            return (
-              <li key={word.id} className={`${cardClass} p-5`}>
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p>
-                      <span className="text-lg font-semibold">{word.english}</span>
-                      <span className="ml-2 text-orange-500">{word.japanese}</span>
-                    </p>
-                    {word.example && <p className="mt-1 text-sm text-zinc-600">{word.example}</p>}
-                  </div>
-                  <div className="flex shrink-0 gap-1">
-                    <Link href={`/admin/words/${word.id}/edit`} className={smallButtonClass}>
-                      編集
-                    </Link>
-                    <button type="button" onClick={() => handleDelete(word.id, word.english)} className={dangerButtonClass}>
-                      削除
-                    </button>
-                  </div>
-                </div>
-                <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs text-zinc-500">
-                  <dt>写真</dt>
-                  <dd className="truncate font-mono">{word.photo_path ?? "—"}</dd>
-                  <dt>イラスト</dt>
-                  <dd className="truncate font-mono">{word.illustration_path ?? "—"}</dd>
-                  <dt>コース</dt>
-                  <dd>{used.length > 0 ? used.join("、") : "未使用"}</dd>
-                </dl>
-              </li>
-            );
-          })}
+          {words.map((word) => (
+            <li key={word.id} className={`${cardClass} flex items-start gap-4 p-4`}>
+              <div className="flex gap-1.5">
+                <Thumbnail src={word.photo_path} alt={`${word.english}の写真`} size="h-16 w-16" />
+                <Thumbnail src={word.illustration_path} alt={`${word.english}のイラスト`} size="h-16 w-16" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p>
+                  <span className="text-lg font-semibold">{word.english}</span>
+                  <span className="ml-2 text-orange-500">{word.japanese}</span>
+                </p>
+                {word.example && <p className="mt-1 text-sm text-zinc-600">{word.example}</p>}
+                {word.example_japanese && <p className="text-sm text-zinc-400">{word.example_japanese}</p>}
+              </div>
+              <div className="flex shrink-0 items-start gap-1">
+                <Link href={`/admin/words/${word.id}/edit`} className={smallButtonClass}>
+                  編集
+                </Link>
+                <DeleteButton
+                  confirmMessage={`単語「${word.english}」を削除しますか？\nこの単語を含むコースからも外れ、学習の記録も消えます。元に戻せません。`}
+                  action={deleteWord.bind(null, word.id)}
+                />
+              </div>
+            </li>
+          ))}
         </ul>
       )}
     </>

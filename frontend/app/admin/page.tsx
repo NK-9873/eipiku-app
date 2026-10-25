@@ -2,17 +2,15 @@ import Link from "next/link";
 
 const MENU = [
   { href: "/admin/courses", title: "コース管理", description: "コースの登録・編集・削除と、出題する単語の並び替え" },
-  { href: "/admin/words", title: "単語管理", description: "英単語・日本語訳・例文・画像パスの登録・編集・削除" },
-  { href: "/admin/users", title: "ユーザー管理", description: "ユーザーの一覧と、学習の進み具合の確認" },
+  { href: "/admin/words", title: "単語管理", description: "英単語・日本語訳・例文・写真・イラストの登録・編集・削除" },
+  { href: "/admin/users", title: "ユーザー管理", description: "ユーザーの作成・編集と、学習の進み具合の確認" },
 ];
 
 export default function AdminTopPage() {
   return (
     <>
       <h1 className="text-2xl font-bold">管理メニュー</h1>
-      <p className="mt-1 text-sm text-zinc-500">
-        変更はこの画面の中だけで反映されます（リロードすると元に戻ります）
-      </p>
+      <p className="mt-1 text-sm text-zinc-500">ここで変更した内容は、すぐに学習画面に反映されます</p>
       <ul className="mt-6 flex flex-col gap-3">
         {MENU.map((item) => (
           <li key={item.href}>

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { logout } from "@/lib/actions";
 
 const NAV_ITEMS = [
   { href: "/admin/courses", label: "コース" },
@@ -9,7 +10,7 @@ const NAV_ITEMS = [
   { href: "/admin/users", label: "ユーザー" },
 ];
 
-export function AdminHeader() {
+export function AdminHeader({ userName }: { userName: string }) {
   const pathname = usePathname();
 
   return (
@@ -32,9 +33,15 @@ export function AdminHeader() {
               </Link>
             );
           })}
-          <Link href="/" className="ml-2 rounded-full px-3 py-1 text-zinc-400 hover:bg-zinc-100">
-            アプリへ
+          <Link href="/mypage" className="ml-2 rounded-full px-3 py-1 text-zinc-400 hover:bg-zinc-100">
+            学習画面へ
           </Link>
+          <span className="ml-1 hidden text-xs text-zinc-400 sm:inline">{userName} さん</span>
+          <form action={logout}>
+            <button type="submit" className="rounded-full px-3 py-1 text-zinc-400 hover:bg-zinc-100">
+              ログアウト
+            </button>
+          </form>
         </nav>
       </div>
     </header>

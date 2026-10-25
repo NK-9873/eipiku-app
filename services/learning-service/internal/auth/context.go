@@ -1,18 +1,31 @@
-// Package auth はリクエストしたユーザーの ID を context で受け渡す。
-// ID を入れるのは middleware（今は X-User-ID ヘッダー、4回目で JWT の検証に置き換える）、
-// 取り出すのは handler。置き換えても handler 側は変えずに済む
+// Package auth は user-service が発行した JWT の検証と、ログイン中のユーザー情報の context での受け渡し。
+// middleware がトークンを検証して context に入れ、handler が取り出す
 package auth
 
-import "context"
+import (
+	"context"
 
-type userIDKey struct{}
+	"eipiku/learning-service/internal/model"
+)
 
-func WithUserID(ctx context.Context, userID uint64) context.Context {
-	return context.WithValue(ctx, userIDKey{}, userID)
+// Claims はトークンから取り出したログイン中のユーザー
+type Claims struct {
+	UserID uint64
+	Role   model.Role
 }
 
-// UserIDFrom は context のユーザー ID を返す。入っていなければ ok=false
-func UserIDFrom(ctx context.Context) (userID uint64, ok bool) {
-	userID, ok = ctx.Value(userIDKey{}).(uint64)
-	return userID, ok
+func (c Claims) IsAdmin() bool {
+	return c.Role == model.RoleAdmin
+}
+
+type claimsKey struct{}
+
+func WithClaims(ctx context.Context, c Claims) context.Context {
+	return context.WithValue(ctx, claimsKey{}, c)
+}
+
+// ClaimsFrom は context のユーザー情報を返す。入っていなければ ok=false
+func ClaimsFrom(ctx context.Context) (c Claims, ok bool) {
+	c, ok = ctx.Value(claimsKey{}).(Claims)
+	return c, ok
 }

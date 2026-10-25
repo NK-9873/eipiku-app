@@ -29,7 +29,7 @@ func TestWordService_CreateWord(t *testing.T) {
 			},
 		}
 
-		_, err := NewWordService(repo).CreateWord(context.Background(), model.WordInput{
+		_, err := NewWordService(repo).CreateWord(context.Background(), adminActor, model.WordInput{
 			English:   " lion ",
 			Japanese:  "ライオン",
 			Example:   ptr("The lion is strong."),
@@ -47,7 +47,7 @@ func TestWordService_CreateWord(t *testing.T) {
 	})
 
 	t.Run("english と japanese が空なら両方の理由を返し、repository は呼ばない", func(t *testing.T) {
-		_, err := NewWordService(&mockWordRepository{}).CreateWord(context.Background(), model.WordInput{})
+		_, err := NewWordService(&mockWordRepository{}).CreateWord(context.Background(), adminActor, model.WordInput{})
 		assertValidationError(t, err, "english は必須です")
 		assertValidationError(t, err, "japanese は必須です")
 	})
@@ -59,7 +59,7 @@ func TestWordService_UpdateWord_NotFound(t *testing.T) {
 			return model.Word{}, apperr.ErrNotFound
 		},
 	}
-	_, err := NewWordService(repo).UpdateWord(context.Background(), 99, model.WordInput{English: "lion", Japanese: "ライオン"})
+	_, err := NewWordService(repo).UpdateWord(context.Background(), adminActor, 99, model.WordInput{English: "lion", Japanese: "ライオン"})
 	if !errors.Is(err, apperr.ErrNotFound) {
 		t.Errorf("ErrNotFound が返るはずが %v", err)
 	}

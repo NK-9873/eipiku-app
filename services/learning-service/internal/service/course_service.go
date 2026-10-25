@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"slices"
 
+	"eipiku/learning-service/internal/apperr"
+	"eipiku/learning-service/internal/auth"
 	"eipiku/learning-service/internal/model"
 	"eipiku/learning-service/internal/repository"
 )
@@ -38,7 +40,11 @@ func (s *CourseService) GetCourse(ctx context.Context, id uint64) (model.Course,
 	return course, nil
 }
 
-func (s *CourseService) CreateCourse(ctx context.Context, in model.CourseInput) (model.Course, error) {
+// CreateCourse / UpdateCourse / DeleteCourse / ReplaceCourseWords は管理者のみ（それ以外は apperr.ErrForbidden）
+func (s *CourseService) CreateCourse(ctx context.Context, actor auth.Claims, in model.CourseInput) (model.Course, error) {
+	if !actor.IsAdmin() {
+		return model.Course{}, apperr.ErrForbidden
+	}
 	in, err := validateCourse(in)
 	if err != nil {
 		return model.Course{}, err
@@ -50,7 +56,10 @@ func (s *CourseService) CreateCourse(ctx context.Context, in model.CourseInput) 
 	return course, nil
 }
 
-func (s *CourseService) UpdateCourse(ctx context.Context, id uint64, in model.CourseInput) (model.Course, error) {
+func (s *CourseService) UpdateCourse(ctx context.Context, actor auth.Claims, id uint64, in model.CourseInput) (model.Course, error) {
+	if !actor.IsAdmin() {
+		return model.Course{}, apperr.ErrForbidden
+	}
 	in, err := validateCourse(in)
 	if err != nil {
 		return model.Course{}, err
@@ -62,7 +71,10 @@ func (s *CourseService) UpdateCourse(ctx context.Context, id uint64, in model.Co
 	return course, nil
 }
 
-func (s *CourseService) DeleteCourse(ctx context.Context, id uint64) error {
+func (s *CourseService) DeleteCourse(ctx context.Context, actor auth.Claims, id uint64) error {
+	if !actor.IsAdmin() {
+		return apperr.ErrForbidden
+	}
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("コースの削除: %w", err)
 	}
@@ -86,7 +98,10 @@ func (s *CourseService) ListCourseWords(ctx context.Context, courseID uint64) ([
 
 // ReplaceCourseWords はコースの単語を wordIDs の並び順でまとめて置き換え、置き換え後の一覧を返す。
 // 空の配列なら単語をすべて外す
-func (s *CourseService) ReplaceCourseWords(ctx context.Context, courseID uint64, wordIDs []uint64) ([]model.CourseWord, error) {
+func (s *CourseService) ReplaceCourseWords(ctx context.Context, actor auth.Claims, courseID uint64, wordIDs []uint64) ([]model.CourseWord, error) {
+	if !actor.IsAdmin() {
+		return nil, apperr.ErrForbidden
+	}
 	v := &validator{}
 	if wordIDs == nil {
 		v.add("word_ids は必須です（単語を外すときは空の配列を指定してください）")

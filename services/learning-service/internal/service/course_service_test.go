@@ -59,7 +59,7 @@ func TestCourseService_CreateCourse(t *testing.T) {
 		}
 		s := NewCourseService(repo, &mockWordRepository{})
 
-		got, err := s.CreateCourse(context.Background(), model.CourseInput{Name: "  乗り物  ", Description: ptr("  ")})
+		got, err := s.CreateCourse(context.Background(), adminActor, model.CourseInput{Name: "  乗り物  ", Description: ptr("  ")})
 		if err != nil {
 			t.Fatalf("エラーが返った: %v", err)
 		}
@@ -84,7 +84,7 @@ func TestCourseService_CreateCourse(t *testing.T) {
 		t.Run(tt.name+"なら ValidationError で、repository は呼ばない", func(t *testing.T) {
 			s := NewCourseService(&mockCourseRepository{}, &mockWordRepository{})
 
-			_, err := s.CreateCourse(context.Background(), tt.in)
+			_, err := s.CreateCourse(context.Background(), adminActor, tt.in)
 			assertValidationError(t, err, tt.wantDetail)
 		})
 	}
@@ -98,7 +98,7 @@ func TestCourseService_UpdateCourse_NotFound(t *testing.T) {
 	}
 	s := NewCourseService(repo, &mockWordRepository{})
 
-	_, err := s.UpdateCourse(context.Background(), 99, model.CourseInput{Name: "乗り物"})
+	_, err := s.UpdateCourse(context.Background(), adminActor, 99, model.CourseInput{Name: "乗り物"})
 	if !errors.Is(err, apperr.ErrNotFound) {
 		t.Errorf("ErrNotFound が返るはずが %v", err)
 	}
@@ -110,7 +110,7 @@ func TestCourseService_DeleteCourse_NotFound(t *testing.T) {
 	}
 	s := NewCourseService(repo, &mockWordRepository{})
 
-	if err := s.DeleteCourse(context.Background(), 99); !errors.Is(err, apperr.ErrNotFound) {
+	if err := s.DeleteCourse(context.Background(), adminActor, 99); !errors.Is(err, apperr.ErrNotFound) {
 		t.Errorf("ErrNotFound が返るはずが %v", err)
 	}
 }
@@ -162,7 +162,7 @@ func TestCourseService_ReplaceCourseWords(t *testing.T) {
 		}
 		s := NewCourseService(repo, &mockWordRepository{findExistingIDs: allExist})
 
-		got, err := s.ReplaceCourseWords(context.Background(), 1, []uint64{3, 1})
+		got, err := s.ReplaceCourseWords(context.Background(), adminActor, 1, []uint64{3, 1})
 		if err != nil {
 			t.Fatalf("エラーが返った: %v", err)
 		}
@@ -186,7 +186,7 @@ func TestCourseService_ReplaceCourseWords(t *testing.T) {
 		}
 		s := NewCourseService(repo, &mockWordRepository{findExistingIDs: allExist})
 
-		got, err := s.ReplaceCourseWords(context.Background(), 1, []uint64{})
+		got, err := s.ReplaceCourseWords(context.Background(), adminActor, 1, []uint64{})
 		if err != nil || replaced == nil || len(replaced) != 0 || len(got) != 0 {
 			t.Errorf("replaced %#v, got %#v, err %v", replaced, got, err)
 		}
@@ -195,14 +195,14 @@ func TestCourseService_ReplaceCourseWords(t *testing.T) {
 	t.Run("word_ids が無ければ ValidationError", func(t *testing.T) {
 		s := NewCourseService(&mockCourseRepository{}, &mockWordRepository{})
 
-		_, err := s.ReplaceCourseWords(context.Background(), 1, nil)
+		_, err := s.ReplaceCourseWords(context.Background(), adminActor, 1, nil)
 		assertValidationError(t, err, "word_ids は必須です")
 	})
 
 	t.Run("同じ単語が重複していたら ValidationError", func(t *testing.T) {
 		s := NewCourseService(&mockCourseRepository{}, &mockWordRepository{})
 
-		_, err := s.ReplaceCourseWords(context.Background(), 1, []uint64{1, 2, 1})
+		_, err := s.ReplaceCourseWords(context.Background(), adminActor, 1, []uint64{1, 2, 1})
 		assertValidationError(t, err, "id=1）が重複")
 	})
 
@@ -212,7 +212,7 @@ func TestCourseService_ReplaceCourseWords(t *testing.T) {
 		}
 		s := NewCourseService(repo, &mockWordRepository{})
 
-		if _, err := s.ReplaceCourseWords(context.Background(), 99, []uint64{1}); !errors.Is(err, apperr.ErrNotFound) {
+		if _, err := s.ReplaceCourseWords(context.Background(), adminActor, 99, []uint64{1}); !errors.Is(err, apperr.ErrNotFound) {
 			t.Errorf("ErrNotFound が返るはずが %v", err)
 		}
 	})
@@ -224,7 +224,7 @@ func TestCourseService_ReplaceCourseWords(t *testing.T) {
 		}
 		s := NewCourseService(repo, words)
 
-		_, err := s.ReplaceCourseWords(context.Background(), 1, []uint64{1, 999})
+		_, err := s.ReplaceCourseWords(context.Background(), adminActor, 1, []uint64{1, 999})
 		assertValidationError(t, err, "単語（id=999）は存在しません")
 	})
 }

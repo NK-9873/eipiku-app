@@ -55,6 +55,13 @@ type CourseProgressInput struct {
 	CurrentPosition *int `json:"current_position"`
 }
 
+// UserProgress は管理者用の、指定ユーザーの学習記録（GET /admin/users/{id}/progress）
+type UserProgress struct {
+	UserID           uint64           `json:"user_id"`
+	WordProgresses   []WordProgress   `json:"word_progresses"`
+	CourseProgresses []CourseProgress `json:"course_progresses"`
+}
+
 // コースの進み具合の状態
 const (
 	CourseNotStarted = "not_started"

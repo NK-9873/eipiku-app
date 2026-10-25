@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"eipiku/learning-service/internal/apperr"
+	"eipiku/learning-service/internal/auth"
 	"eipiku/learning-service/internal/model"
 	"eipiku/learning-service/internal/repository"
 )
@@ -36,7 +38,11 @@ func (s *WordService) GetWord(ctx context.Context, id uint64) (model.Word, error
 	return word, nil
 }
 
-func (s *WordService) CreateWord(ctx context.Context, in model.WordInput) (model.Word, error) {
+// CreateWord / UpdateWord / DeleteWord は管理者のみ（それ以外は apperr.ErrForbidden）
+func (s *WordService) CreateWord(ctx context.Context, actor auth.Claims, in model.WordInput) (model.Word, error) {
+	if !actor.IsAdmin() {
+		return model.Word{}, apperr.ErrForbidden
+	}
 	in, err := validateWord(in)
 	if err != nil {
 		return model.Word{}, err
@@ -48,7 +54,10 @@ func (s *WordService) CreateWord(ctx context.Context, in model.WordInput) (model
 	return word, nil
 }
 
-func (s *WordService) UpdateWord(ctx context.Context, id uint64, in model.WordInput) (model.Word, error) {
+func (s *WordService) UpdateWord(ctx context.Context, actor auth.Claims, id uint64, in model.WordInput) (model.Word, error) {
+	if !actor.IsAdmin() {
+		return model.Word{}, apperr.ErrForbidden
+	}
 	in, err := validateWord(in)
 	if err != nil {
 		return model.Word{}, err
@@ -60,7 +69,10 @@ func (s *WordService) UpdateWord(ctx context.Context, id uint64, in model.WordIn
 	return word, nil
 }
 
-func (s *WordService) DeleteWord(ctx context.Context, id uint64) error {
+func (s *WordService) DeleteWord(ctx context.Context, actor auth.Claims, id uint64) error {
+	if !actor.IsAdmin() {
+		return apperr.ErrForbidden
+	}
 	if err := s.repo.Delete(ctx, id); err != nil {
 		return fmt.Errorf("単語の削除: %w", err)
 	}

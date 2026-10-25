@@ -16,13 +16,16 @@ func NewWordHandler(s *service.WordService) *WordHandler {
 	return &WordHandler{service: s}
 }
 
-// Register は /words 以下のルートを登録する
-func (h *WordHandler) Register(mux *http.ServeMux) {
-	mux.HandleFunc("GET /words", h.List)
-	mux.HandleFunc("POST /words", h.Create)
-	mux.HandleFunc("GET /words/{id}", h.Get)
-	mux.HandleFunc("PUT /words/{id}", h.Update)
-	mux.HandleFunc("DELETE /words/{id}", h.Delete)
+// Register はルートを登録する。どれもログインが必要で、登録・更新・削除は管理者のみ（service で確かめる）
+func (h *WordHandler) Register(mux *http.ServeMux, requireAuth func(http.Handler) http.Handler) {
+	handle := func(pattern string, f http.HandlerFunc) {
+		mux.Handle(pattern, requireAuth(f))
+	}
+	handle("GET /words", h.List)
+	handle("POST /words", h.Create)
+	handle("GET /words/{id}", h.Get)
+	handle("PUT /words/{id}", h.Update)
+	handle("DELETE /words/{id}", h.Delete)
 }
 
 // List は GET /words
@@ -37,11 +40,15 @@ func (h *WordHandler) List(w http.ResponseWriter, r *http.Request) {
 
 // Create は POST /words
 func (h *WordHandler) Create(w http.ResponseWriter, r *http.Request) {
+	actor, ok := currentUser(w, r)
+	if !ok {
+		return
+	}
 	var in model.WordInput
 	if !decodeJSON(w, r, &in) {
 		return
 	}
-	word, err := h.service.CreateWord(r.Context(), in)
+	word, err := h.service.CreateWord(r.Context(), actor, in)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -66,6 +73,10 @@ func (h *WordHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 // Update は PUT /words/{id}
 func (h *WordHandler) Update(w http.ResponseWriter, r *http.Request) {
+	actor, ok := currentUser(w, r)
+	if !ok {
+		return
+	}
 	id, ok := pathID(w, r, "id")
 	if !ok {
 		return
@@ -74,7 +85,7 @@ func (h *WordHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &in) {
 		return
 	}
-	word, err := h.service.UpdateWord(r.Context(), id, in)
+	word, err := h.service.UpdateWord(r.Context(), actor, id, in)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -84,11 +95,15 @@ func (h *WordHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 // Delete は DELETE /words/{id}
 func (h *WordHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	actor, ok := currentUser(w, r)
+	if !ok {
+		return
+	}
 	id, ok := pathID(w, r, "id")
 	if !ok {
 		return
 	}
-	if err := h.service.DeleteWord(r.Context(), id); err != nil {
+	if err := h.service.DeleteWord(r.Context(), actor, id); err != nil {
 		writeError(w, err)
 		return
 	}

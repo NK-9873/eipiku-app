@@ -9,6 +9,7 @@ import (
 	"strconv"
 
 	"eipiku/learning-service/internal/apperr"
+	"eipiku/learning-service/internal/auth"
 )
 
 const maxBodyBytes = 1 << 20 // 1MB
@@ -38,6 +39,8 @@ func writeError(w http.ResponseWriter, err error) {
 		writeJSON(w, http.StatusBadRequest, errorResponse{Error: "入力内容に誤りがあります", Details: validationErr.Details})
 	case errors.Is(err, apperr.ErrNotFound):
 		writeJSON(w, http.StatusNotFound, errorResponse{Error: "見つかりません"})
+	case errors.Is(err, apperr.ErrForbidden):
+		writeJSON(w, http.StatusForbidden, errorResponse{Error: "この操作を行う権限がありません"})
 	default:
 		log.Printf("サーバーエラー: %v", err)
 		writeJSON(w, http.StatusInternalServerError, errorResponse{Error: "internal server error"})
@@ -52,6 +55,17 @@ func pathID(w http.ResponseWriter, r *http.Request, name string) (id uint64, ok 
 		return 0, false
 	}
 	return id, true
+}
+
+// currentUser は middleware が context に入れたユーザー情報を取り出す
+func currentUser(w http.ResponseWriter, r *http.Request) (auth.Claims, bool) {
+	claims, ok := auth.ClaimsFrom(r.Context())
+	if !ok {
+		// middleware を通していないルートで呼ばれたとき（登録の書き忘れ）
+		writeJSON(w, http.StatusUnauthorized, errorResponse{Error: "ログインが必要です"})
+		return auth.Claims{}, false
+	}
+	return claims, true
 }
 
 // decodeJSON は body を dst に読み込む。JSON として読めなければ 400 を書いて ok=false を返す

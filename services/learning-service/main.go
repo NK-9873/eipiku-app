@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 
+	"eipiku/learning-service/internal/auth"
 	"eipiku/learning-service/internal/db"
 	"eipiku/learning-service/internal/handler"
 	"eipiku/learning-service/internal/middleware"
@@ -13,6 +14,12 @@ import (
 )
 
 func main() {
+	// user-service が発行したトークンを同じ鍵で検証する
+	tokens, err := auth.NewJWT(os.Getenv("JWT_SECRET"))
+	if err != nil {
+		log.Fatalf("JWT の設定が不正です: %v", err)
+	}
+
 	conn, err := db.OpenFromEnv()
 	if err != nil {
 		log.Fatalf("DB に接続できません: %v", err)
@@ -23,12 +30,14 @@ func main() {
 	wordRepo := repository.NewWordRepository(conn)
 	progressRepo := repository.NewProgressRepository(conn)
 
+	// /health 以外はログインが必要（Authorization: Bearer <JWT>）
+	requireAuth := middleware.RequireAuth(tokens)
+
 	mux := http.NewServeMux()
 	mux.HandleFunc("/health", handler.Health)
-	handler.NewCourseHandler(service.NewCourseService(courseRepo, wordRepo)).Register(mux)
-	handler.NewWordHandler(service.NewWordService(wordRepo)).Register(mux)
-	// /me 以下は X-User-ID でユーザーを特定する（4回目で JWT の検証に置き換える）
-	handler.NewProgressHandler(service.NewProgressService(progressRepo, courseRepo, wordRepo)).Register(mux, middleware.UserFromHeader)
+	handler.NewCourseHandler(service.NewCourseService(courseRepo, wordRepo)).Register(mux, requireAuth)
+	handler.NewWordHandler(service.NewWordService(wordRepo)).Register(mux, requireAuth)
+	handler.NewProgressHandler(service.NewProgressService(progressRepo, courseRepo, wordRepo)).Register(mux, requireAuth)
 
 	// 許可するオリジンは CORS_ALLOWED_ORIGIN で変えられる（未設定ならローカルの Next.js）
 	origin := os.Getenv("CORS_ALLOWED_ORIGIN")

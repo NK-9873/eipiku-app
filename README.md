@@ -57,6 +57,52 @@ docker compose down             # 停止（データは残る）
 - http://localhost:8082/health
 - http://localhost:8082/courses（コース一覧の JSON）
 
+## API 一覧
+
+ログインが必要な API は、user-service の `POST /login` で取ったトークンを `Authorization: Bearer <token>` ヘッダーに付けて呼ぶ。
+トークンの有効期限は24時間。どちらのサービスも同じ `JWT_SECRET` で署名・検証する。
+
+権限の意味：**不要** = 誰でも呼べる / **ログイン** = トークンが必要（無い・不正・期限切れは 401）/ **管理者** = role が admin のユーザーのみ（それ以外は 403）
+
+エラーは `{"error": "...", "details": ["..."]}` の JSON で返る（400 入力不正、401 未ログイン、403 権限なし、404 見つからない、409 重複）。
+
+### user-service（http://localhost:8081）
+
+| メソッド | URL | 内容 | 権限 |
+|---|---|---|---|
+| GET | /health | 動作確認 | 不要 |
+| POST | /signup | 新規登録（name、email、password） | 不要 |
+| POST | /login | ログイン。トークンを返す（email、password） | 不要 |
+| GET | /me | 自分の情報 | ログイン |
+| PUT | /me/settings | 画像タイプの変更（image_type: photo / illustration） | ログイン |
+| GET | /users | ユーザー一覧 | 管理者 |
+| GET | /users/{id} | ユーザーの詳細 | 管理者 |
+
+### learning-service（http://localhost:8082）
+
+| メソッド | URL | 内容 | 権限 |
+|---|---|---|---|
+| GET | /health | 動作確認 | 不要 |
+| GET | /courses | コース一覧 | ログイン |
+| GET | /courses/{id} | コースの詳細 | ログイン |
+| GET | /courses/{id}/words | コースの単語（出題順） | ログイン |
+| POST | /courses | コースの登録 | 管理者 |
+| PUT | /courses/{id} | コースの更新 | 管理者 |
+| DELETE | /courses/{id} | コースの削除 | 管理者 |
+| PUT | /courses/{id}/words | コースの単語と出題順をまとめて置き換え（word_ids の順が出題順） | 管理者 |
+| GET | /words | 単語一覧 | ログイン |
+| GET | /words/{id} | 単語の詳細 | ログイン |
+| POST | /words | 単語の登録 | 管理者 |
+| PUT | /words/{id} | 単語の更新 | 管理者 |
+| DELETE | /words/{id} | 単語の削除 | 管理者 |
+| GET | /me/word-progresses | 自分の習得度（?course_id=、?mastery=weak,unsure で絞り込み） | ログイン |
+| PUT | /me/word-progresses/{wordId} | 習得度の登録・更新（mastery: weak / unsure / mastered） | ログイン |
+| GET | /me/review-words | 復習対象の単語（?course_id=、?mastery=。mastery 省略時は苦手と微妙） | ログイン |
+| GET | /me/course-progresses | 自分のコースの進み具合 | ログイン |
+| PUT | /me/course-progresses/{courseId} | 中断位置の登録・更新（current_position） | ログイン |
+| GET | /me/summary | マイページ用の学習状況 | ログイン |
+| GET | /admin/users/{id}/progress | 指定ユーザーの習得度と進み具合 | 管理者 |
+
 ## フロントエンドの起動
 
 ```

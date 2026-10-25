@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"strings"
 
+	"eipiku/learning-service/internal/apperr"
+	"eipiku/learning-service/internal/auth"
 	"eipiku/learning-service/internal/model"
 	"eipiku/learning-service/internal/repository"
 )
@@ -117,6 +119,23 @@ func (s *ProgressService) SaveCourseProgress(ctx context.Context, userID, course
 		return model.CourseProgress{}, fmt.Errorf("進み具合の保存: %w", err)
 	}
 	return progress, nil
+}
+
+// UserProgress は指定したユーザーの習得度と進み具合（管理者のみ。それ以外は apperr.ErrForbidden）。
+// ユーザーは user-service 側にあるので存在確認はせず、記録が無ければ空の一覧を返す
+func (s *ProgressService) UserProgress(ctx context.Context, actor auth.Claims, userID uint64) (model.UserProgress, error) {
+	if !actor.IsAdmin() {
+		return model.UserProgress{}, apperr.ErrForbidden
+	}
+	words, err := s.ListWordProgresses(ctx, userID, ProgressQuery{})
+	if err != nil {
+		return model.UserProgress{}, err
+	}
+	courses, err := s.ListCourseProgresses(ctx, userID)
+	if err != nil {
+		return model.UserProgress{}, err
+	}
+	return model.UserProgress{UserID: userID, WordProgresses: words, CourseProgresses: courses}, nil
 }
 
 // Summary はマイページ用の学習状況

@@ -16,15 +16,18 @@ func NewCourseHandler(s *service.CourseService) *CourseHandler {
 	return &CourseHandler{service: s}
 }
 
-// Register は /courses 以下のルートを登録する
-func (h *CourseHandler) Register(mux *http.ServeMux) {
-	mux.HandleFunc("GET /courses", h.List)
-	mux.HandleFunc("POST /courses", h.Create)
-	mux.HandleFunc("GET /courses/{id}", h.Get)
-	mux.HandleFunc("PUT /courses/{id}", h.Update)
-	mux.HandleFunc("DELETE /courses/{id}", h.Delete)
-	mux.HandleFunc("GET /courses/{id}/words", h.ListWords)
-	mux.HandleFunc("PUT /courses/{id}/words", h.ReplaceWords)
+// Register はルートを登録する。どれもログインが必要で、登録・更新・削除は管理者のみ（service で確かめる）
+func (h *CourseHandler) Register(mux *http.ServeMux, requireAuth func(http.Handler) http.Handler) {
+	handle := func(pattern string, f http.HandlerFunc) {
+		mux.Handle(pattern, requireAuth(f))
+	}
+	handle("GET /courses", h.List)
+	handle("POST /courses", h.Create)
+	handle("GET /courses/{id}", h.Get)
+	handle("PUT /courses/{id}", h.Update)
+	handle("DELETE /courses/{id}", h.Delete)
+	handle("GET /courses/{id}/words", h.ListWords)
+	handle("PUT /courses/{id}/words", h.ReplaceWords)
 }
 
 // List は GET /courses
@@ -39,11 +42,15 @@ func (h *CourseHandler) List(w http.ResponseWriter, r *http.Request) {
 
 // Create は POST /courses
 func (h *CourseHandler) Create(w http.ResponseWriter, r *http.Request) {
+	actor, ok := currentUser(w, r)
+	if !ok {
+		return
+	}
 	var in model.CourseInput
 	if !decodeJSON(w, r, &in) {
 		return
 	}
-	course, err := h.service.CreateCourse(r.Context(), in)
+	course, err := h.service.CreateCourse(r.Context(), actor, in)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -68,6 +75,10 @@ func (h *CourseHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 // Update は PUT /courses/{id}
 func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
+	actor, ok := currentUser(w, r)
+	if !ok {
+		return
+	}
 	id, ok := pathID(w, r, "id")
 	if !ok {
 		return
@@ -76,7 +87,7 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &in) {
 		return
 	}
-	course, err := h.service.UpdateCourse(r.Context(), id, in)
+	course, err := h.service.UpdateCourse(r.Context(), actor, id, in)
 	if err != nil {
 		writeError(w, err)
 		return
@@ -86,11 +97,15 @@ func (h *CourseHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 // Delete は DELETE /courses/{id}
 func (h *CourseHandler) Delete(w http.ResponseWriter, r *http.Request) {
+	actor, ok := currentUser(w, r)
+	if !ok {
+		return
+	}
 	id, ok := pathID(w, r, "id")
 	if !ok {
 		return
 	}
-	if err := h.service.DeleteCourse(r.Context(), id); err != nil {
+	if err := h.service.DeleteCourse(r.Context(), actor, id); err != nil {
 		writeError(w, err)
 		return
 	}
@@ -113,6 +128,10 @@ func (h *CourseHandler) ListWords(w http.ResponseWriter, r *http.Request) {
 
 // ReplaceWords は PUT /courses/{id}/words。body は {"word_ids": [3, 1, 2]}（この順が出題順）
 func (h *CourseHandler) ReplaceWords(w http.ResponseWriter, r *http.Request) {
+	actor, ok := currentUser(w, r)
+	if !ok {
+		return
+	}
 	id, ok := pathID(w, r, "id")
 	if !ok {
 		return
@@ -121,7 +140,7 @@ func (h *CourseHandler) ReplaceWords(w http.ResponseWriter, r *http.Request) {
 	if !decodeJSON(w, r, &in) {
 		return
 	}
-	words, err := h.service.ReplaceCourseWords(r.Context(), id, in.WordIDs)
+	words, err := h.service.ReplaceCourseWords(r.Context(), actor, id, in.WordIDs)
 	if err != nil {
 		writeError(w, err)
 		return

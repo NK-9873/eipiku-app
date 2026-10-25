@@ -3,7 +3,14 @@ package service
 import (
 	"context"
 
+	"eipiku/learning-service/internal/auth"
 	"eipiku/learning-service/internal/model"
+)
+
+// テストで使うログイン中のユーザー
+var (
+	adminActor = auth.Claims{UserID: 1, Role: model.RoleAdmin}
+	userActor  = auth.Claims{UserID: 2, Role: model.RoleUser}
 )
 
 // repository のモック。テストごとに必要なメソッドだけ関数を差し込む。

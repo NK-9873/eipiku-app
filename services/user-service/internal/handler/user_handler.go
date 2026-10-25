@@ -30,6 +30,8 @@ func (h *UserHandler) Register(mux *http.ServeMux, requireAuth func(http.Handler
 	// 管理者かどうかは service で確かめる
 	authed("GET /users", h.List)
 	authed("GET /users/{id}", h.Get)
+	authed("POST /users", h.Create)
+	authed("PUT /users/{id}", h.Update)
 }
 
 // Signup は POST /signup
@@ -118,6 +120,47 @@ func (h *UserHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	user, err := h.service.GetUser(r.Context(), actor, id)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, user)
+}
+
+// Create は POST /users（管理者のみ）
+func (h *UserHandler) Create(w http.ResponseWriter, r *http.Request) {
+	actor, ok := currentUser(w, r)
+	if !ok {
+		return
+	}
+	var in model.AdminUserInput
+	if !decodeJSON(w, r, &in) {
+		return
+	}
+	user, err := h.service.CreateUser(r.Context(), actor, in)
+	if err != nil {
+		writeError(w, err)
+		return
+	}
+	w.Header().Set("Location", fmt.Sprintf("/users/%d", user.ID))
+	writeJSON(w, http.StatusCreated, user)
+}
+
+// Update は PUT /users/{id}（管理者のみ）
+func (h *UserHandler) Update(w http.ResponseWriter, r *http.Request) {
+	actor, ok := currentUser(w, r)
+	if !ok {
+		return
+	}
+	id, ok := pathID(w, r, "id")
+	if !ok {
+		return
+	}
+	var in model.AdminUserInput
+	if !decodeJSON(w, r, &in) {
+		return
+	}
+	user, err := h.service.UpdateUser(r.Context(), actor, id, in)
 	if err != nil {
 		writeError(w, err)
 		return

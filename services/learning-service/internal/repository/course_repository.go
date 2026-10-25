@@ -97,7 +97,7 @@ func (r *mysqlCourseRepository) Delete(ctx context.Context, id uint64) error {
 
 func (r *mysqlCourseRepository) FindWords(ctx context.Context, courseID uint64) ([]model.CourseWord, error) {
 	rows, err := r.db.QueryContext(ctx, `
-		SELECT cw.display_order, w.id, w.english, w.japanese, w.example, w.photo_path, w.illustration_path
+		SELECT cw.display_order, w.id, w.english, w.japanese, w.example, w.example_japanese, w.photo_path, w.illustration_path
 		FROM course_words cw
 		JOIN words w ON w.id = cw.word_id
 		WHERE cw.course_id = ?
@@ -110,7 +110,7 @@ func (r *mysqlCourseRepository) FindWords(ctx context.Context, courseID uint64) 
 	var words []model.CourseWord
 	for rows.Next() {
 		var cw model.CourseWord
-		if err := rows.Scan(&cw.DisplayOrder, &cw.ID, &cw.English, &cw.Japanese, &cw.Example, &cw.PhotoPath, &cw.IllustrationPath); err != nil {
+		if err := rows.Scan(&cw.DisplayOrder, &cw.ID, &cw.English, &cw.Japanese, &cw.Example, &cw.ExampleJapanese, &cw.PhotoPath, &cw.IllustrationPath); err != nil {
 			return nil, err
 		}
 		words = append(words, cw)

@@ -32,11 +32,11 @@ func NewWordRepository(db *sql.DB) WordRepository {
 	return &mysqlWordRepository{db: db}
 }
 
-const wordColumns = "id, english, japanese, example, photo_path, illustration_path"
+const wordColumns = "id, english, japanese, example, example_japanese, photo_path, illustration_path"
 
 func scanWord(row interface{ Scan(...any) error }) (model.Word, error) {
 	var w model.Word
-	err := row.Scan(&w.ID, &w.English, &w.Japanese, &w.Example, &w.PhotoPath, &w.IllustrationPath)
+	err := row.Scan(&w.ID, &w.English, &w.Japanese, &w.Example, &w.ExampleJapanese, &w.PhotoPath, &w.IllustrationPath)
 	return w, err
 }
 
@@ -100,8 +100,8 @@ func (r *mysqlWordRepository) FindExistingIDs(ctx context.Context, ids []uint64)
 
 func (r *mysqlWordRepository) Create(ctx context.Context, in model.WordInput) (model.Word, error) {
 	res, err := r.db.ExecContext(ctx,
-		"INSERT INTO words (english, japanese, example, photo_path, illustration_path) VALUES (?, ?, ?, ?, ?)",
-		in.English, in.Japanese, in.Example, in.PhotoPath, in.IllustrationPath)
+		"INSERT INTO words (english, japanese, example, example_japanese, photo_path, illustration_path) VALUES (?, ?, ?, ?, ?, ?)",
+		in.English, in.Japanese, in.Example, in.ExampleJapanese, in.PhotoPath, in.IllustrationPath)
 	if err != nil {
 		return model.Word{}, err
 	}
@@ -114,8 +114,8 @@ func (r *mysqlWordRepository) Create(ctx context.Context, in model.WordInput) (m
 
 func (r *mysqlWordRepository) Update(ctx context.Context, id uint64, in model.WordInput) (model.Word, error) {
 	res, err := r.db.ExecContext(ctx,
-		"UPDATE words SET english = ?, japanese = ?, example = ?, photo_path = ?, illustration_path = ? WHERE id = ?",
-		in.English, in.Japanese, in.Example, in.PhotoPath, in.IllustrationPath, id)
+		"UPDATE words SET english = ?, japanese = ?, example = ?, example_japanese = ?, photo_path = ?, illustration_path = ? WHERE id = ?",
+		in.English, in.Japanese, in.Example, in.ExampleJapanese, in.PhotoPath, in.IllustrationPath, id)
 	if err != nil {
 		return model.Word{}, err
 	}
@@ -140,6 +140,7 @@ func wordFromInput(id uint64, in model.WordInput) model.Word {
 		English:          in.English,
 		Japanese:         in.Japanese,
 		Example:          in.Example,
+		ExampleJapanese:  in.ExampleJapanese,
 		PhotoPath:        in.PhotoPath,
 		IllustrationPath: in.IllustrationPath,
 	}

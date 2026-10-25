@@ -75,7 +75,7 @@ func (r *mysqlProgressRepository) FindReviewWords(ctx context.Context, userID ui
 		joinArgs = append(joinArgs, *filter.CourseID)
 	}
 	query := `
-		SELECT w.id, w.english, w.japanese, w.example, w.photo_path, w.illustration_path, wp.mastery, wp.updated_at
+		SELECT w.id, w.english, w.japanese, w.example, w.example_japanese, w.photo_path, w.illustration_path, wp.mastery, wp.updated_at
 		FROM word_progresses wp
 		JOIN words w ON w.id = wp.word_id
 		LEFT JOIN course_words cw ON cw.word_id = w.id AND cw.course_id = ` + orderCourse +
@@ -90,7 +90,7 @@ func (r *mysqlProgressRepository) FindReviewWords(ctx context.Context, userID ui
 	var words []model.ReviewWord
 	for rows.Next() {
 		var rw model.ReviewWord
-		if err := rows.Scan(&rw.ID, &rw.English, &rw.Japanese, &rw.Example, &rw.PhotoPath, &rw.IllustrationPath, &rw.Mastery, &rw.UpdatedAt); err != nil {
+		if err := rows.Scan(&rw.ID, &rw.English, &rw.Japanese, &rw.Example, &rw.ExampleJapanese, &rw.PhotoPath, &rw.IllustrationPath, &rw.Mastery, &rw.UpdatedAt); err != nil {
 			return nil, err
 		}
 		words = append(words, rw)

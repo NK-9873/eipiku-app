@@ -22,6 +22,22 @@ type mockUserRepository struct {
 	findByEmail     func(ctx context.Context, email string) (model.User, error)
 	findAll         func(ctx context.Context) ([]model.User, error)
 	updateImageType func(ctx context.Context, id uint64, imageType model.ImageType) error
+	update          func(ctx context.Context, id uint64, u model.UserUpdate) error
+	countAdmins     func(ctx context.Context) (int, error)
+}
+
+func (m *mockUserRepository) Update(ctx context.Context, id uint64, u model.UserUpdate) error {
+	if m.update == nil {
+		panic("UserRepository.Update が予期せず呼ばれた")
+	}
+	return m.update(ctx, id, u)
+}
+
+func (m *mockUserRepository) CountAdmins(ctx context.Context) (int, error) {
+	if m.countAdmins == nil {
+		panic("UserRepository.CountAdmins が予期せず呼ばれた")
+	}
+	return m.countAdmins(ctx)
 }
 
 func (m *mockUserRepository) Create(ctx context.Context, u model.NewUser) (model.User, error) {
@@ -92,7 +108,7 @@ func TestUserService_Signup(t *testing.T) {
 		if err != nil {
 			t.Fatalf("エラーが返った: %v", err)
 		}
-		if saved.Name != "山田 花子" || saved.Email != "hanako@example.com" {
+		if saved.Name != "山田 花子" || saved.Email != "hanako@example.com" || saved.Role != model.RoleUser {
 			t.Errorf("repository に渡した値 = %#v", saved)
 		}
 		if saved.PasswordHash == "password123" || bcrypt.CompareHashAndPassword([]byte(saved.PasswordHash), []byte("password123")) != nil {

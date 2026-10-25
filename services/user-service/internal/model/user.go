@@ -9,6 +9,10 @@ const (
 	RoleAdmin Role = "admin"
 )
 
+func (r Role) Valid() bool {
+	return r == RoleUser || r == RoleAdmin
+}
+
 // ImageType は単語学習で表示する画像（写真・イラスト）
 type ImageType string
 
@@ -38,6 +42,24 @@ type NewUser struct {
 	Name         string
 	Email        string
 	PasswordHash string
+	Role         Role
+}
+
+// UserUpdate は管理者による更新で repository に渡す値。PasswordHash が nil ならパスワードは変えない
+type UserUpdate struct {
+	Name         string
+	Email        string
+	Role         Role
+	PasswordHash *string
+}
+
+// AdminUserInput は POST /users・PUT /users/{id} の body（管理者用）。
+// 作成では role を省略すると一般ユーザー。更新では password が空ならパスワードを変えない
+type AdminUserInput struct {
+	Name     string `json:"name"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+	Role     Role   `json:"role"`
 }
 
 // SignupInput は POST /signup の body

@@ -48,33 +48,96 @@ const (
 	maxPasswordBytes  = 72
 )
 
-// Signup はユーザーを登録する。メールアドレスが登録済みなら apperr.ErrConflict
+// Signup はユーザーを登録する（一般ユーザーとして）。メールアドレスが登録済みなら apperr.ErrConflict
 func (s *UserService) Signup(ctx context.Context, in model.SignupInput) (model.User, error) {
 	v := &validator{}
-	name := v.required("name", in.Name, 50)
-	email := normalizeEmail(v.required("email", in.Email, 255))
-	if email != "" && !validEmail(email) {
-		v.add("email の形式が正しくありません")
+	name, email := validateProfile(v, in.Name, in.Email)
+	validatePassword(v, in.Password)
+	if err := v.err(); err != nil {
+		return model.User{}, err
 	}
-	switch {
-	case len([]rune(in.Password)) < minPasswordLength:
-		v.add("password は%d文字以上にしてください", minPasswordLength)
-	case len(in.Password) > maxPasswordBytes:
-		v.add("password は%dバイト以内にしてください", maxPasswordBytes)
+	return s.create(ctx, name, email, in.Password, model.RoleUser)
+}
+
+// CreateUser は管理者がユーザーを作成する（管理者のみ）。入力チェックは新規登録と同じで、role も指定できる
+func (s *UserService) CreateUser(ctx context.Context, actor auth.Claims, in model.AdminUserInput) (model.User, error) {
+	if actor.Role != model.RoleAdmin {
+		return model.User{}, apperr.ErrForbidden
+	}
+	if in.Role == "" {
+		in.Role = model.RoleUser
+	}
+	v := &validator{}
+	name, email := validateProfile(v, in.Name, in.Email)
+	validatePassword(v, in.Password)
+	validateRole(v, in.Role)
+	if err := v.err(); err != nil {
+		return model.User{}, err
+	}
+	return s.create(ctx, name, email, in.Password, in.Role)
+}
+
+func (s *UserService) create(ctx context.Context, name, email, password string, role model.Role) (model.User, error) {
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), s.bcryptCost)
+	if err != nil {
+		return model.User{}, fmt.Errorf("パスワードのハッシュ化: %w", err)
+	}
+	user, err := s.repo.Create(ctx, model.NewUser{Name: name, Email: email, PasswordHash: string(hash), Role: role})
+	if err != nil {
+		return model.User{}, fmt.Errorf("ユーザーの登録: %w", err)
+	}
+	return user, nil
+}
+
+// UpdateUser は管理者がユーザーの名前・メール・role を変更する（管理者のみ）。
+// password が空ならパスワードは変えない。管理者が1人もいなくなる変更は ValidationError
+func (s *UserService) UpdateUser(ctx context.Context, actor auth.Claims, id uint64, in model.AdminUserInput) (model.User, error) {
+	if actor.Role != model.RoleAdmin {
+		return model.User{}, apperr.ErrForbidden
+	}
+	v := &validator{}
+	name, email := validateProfile(v, in.Name, in.Email)
+	if in.Password != "" {
+		validatePassword(v, in.Password)
+	}
+	if in.Role == "" {
+		v.add("role は必須です")
+	} else {
+		validateRole(v, in.Role)
 	}
 	if err := v.err(); err != nil {
 		return model.User{}, err
 	}
 
-	hash, err := bcrypt.GenerateFromPassword([]byte(in.Password), s.bcryptCost)
+	target, err := s.repo.FindByID(ctx, id)
 	if err != nil {
-		return model.User{}, fmt.Errorf("パスワードのハッシュ化: %w", err)
+		return model.User{}, fmt.Errorf("ユーザーの取得: %w", err)
 	}
-	user, err := s.repo.Create(ctx, model.NewUser{Name: name, Email: email, PasswordHash: string(hash)})
-	if err != nil {
-		return model.User{}, fmt.Errorf("ユーザーの登録: %w", err)
+	// 管理者を一般ユーザーに変えるときは、ほかに管理者が残るか確かめる
+	if target.Role == model.RoleAdmin && in.Role != model.RoleAdmin {
+		admins, err := s.repo.CountAdmins(ctx)
+		if err != nil {
+			return model.User{}, fmt.Errorf("管理者の数の取得: %w", err)
+		}
+		if admins <= 1 {
+			v.add("管理者が1人もいなくなるため、role を user に変更できません（先にほかのユーザーを管理者にしてください）")
+			return model.User{}, v.err()
+		}
 	}
-	return user, nil
+
+	update := model.UserUpdate{Name: name, Email: email, Role: in.Role}
+	if in.Password != "" {
+		hash, err := bcrypt.GenerateFromPassword([]byte(in.Password), s.bcryptCost)
+		if err != nil {
+			return model.User{}, fmt.Errorf("パスワードのハッシュ化: %w", err)
+		}
+		h := string(hash)
+		update.PasswordHash = &h
+	}
+	if err := s.repo.Update(ctx, id, update); err != nil {
+		return model.User{}, fmt.Errorf("ユーザーの更新: %w", err)
+	}
+	return s.repo.FindByID(ctx, id)
 }
 
 // Login はメールアドレスとパスワードを確かめてトークンを発行する。
@@ -157,6 +220,31 @@ func (s *UserService) GetUser(ctx context.Context, actor auth.Claims, id uint64)
 		return model.User{}, fmt.Errorf("ユーザーの取得: %w", err)
 	}
 	return user, nil
+}
+
+// validateProfile は名前とメールアドレスを確かめ、整えた値を返す（新規登録・管理者の作成・更新で共通）
+func validateProfile(v *validator, name, email string) (string, string) {
+	name = v.required("name", name, 50)
+	email = normalizeEmail(v.required("email", email, 255))
+	if email != "" && !validEmail(email) {
+		v.add("email の形式が正しくありません")
+	}
+	return name, email
+}
+
+func validatePassword(v *validator, password string) {
+	switch {
+	case len([]rune(password)) < minPasswordLength:
+		v.add("password は%d文字以上にしてください", minPasswordLength)
+	case len(password) > maxPasswordBytes:
+		v.add("password は%dバイト以内にしてください", maxPasswordBytes)
+	}
+}
+
+func validateRole(v *validator, role model.Role) {
+	if !role.Valid() {
+		v.add("role は admin / user のいずれかを指定してください")
+	}
 }
 
 // メールアドレスは大文字・小文字を区別せずに扱うため、小文字にそろえて保存・検索する

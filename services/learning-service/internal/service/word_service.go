@@ -85,6 +85,7 @@ func validateWord(in model.WordInput) (model.WordInput, error) {
 	in.English = v.required("english", in.English, 100)
 	in.Japanese = v.required("japanese", in.Japanese, 100)
 	in.Example = v.optional("example", in.Example, 255)
+	in.ExampleJapanese = v.optional("example_japanese", in.ExampleJapanese, 255)
 	in.PhotoPath = v.optional("photo_path", in.PhotoPath, 255)
 	in.IllustrationPath = v.optional("illustration_path", in.IllustrationPath, 255)
 	return in, v.err()

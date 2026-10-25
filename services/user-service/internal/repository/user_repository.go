@@ -21,6 +21,10 @@ type UserRepository interface {
 	FindAll(ctx context.Context) ([]model.User, error)
 	// UpdateImageType は対象が無ければ apperr.ErrNotFound を返す
 	UpdateImageType(ctx context.Context, id uint64, imageType model.ImageType) error
+	// Update は名前・メール・role（と指定があればパスワード）を更新する。
+	// 対象が無ければ apperr.ErrNotFound、メールアドレスが他のユーザーと重複すれば apperr.ErrConflict
+	Update(ctx context.Context, id uint64, u model.UserUpdate) error
+	CountAdmins(ctx context.Context) (int, error)
 }
 
 type mysqlUserRepository struct {
@@ -44,9 +48,8 @@ func scanUser(row interface{ Scan(...any) error }) (model.User, error) {
 
 func (r *mysqlUserRepository) Create(ctx context.Context, u model.NewUser) (model.User, error) {
 	res, err := r.db.ExecContext(ctx,
-		"INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)", u.Name, u.Email, u.PasswordHash)
-	var mysqlErr *mysql.MySQLError
-	if errors.As(err, &mysqlErr) && mysqlErr.Number == errDuplicateEntry {
+		"INSERT INTO users (name, email, password_hash, role) VALUES (?, ?, ?, ?)", u.Name, u.Email, u.PasswordHash, u.Role)
+	if isDuplicate(err) {
 		return model.User{}, apperr.ErrConflict
 	}
 	if err != nil {
@@ -92,6 +95,42 @@ func (r *mysqlUserRepository) FindAll(ctx context.Context) ([]model.User, error)
 		users = append(users, u)
 	}
 	return users, rows.Err()
+}
+
+func (r *mysqlUserRepository) Update(ctx context.Context, id uint64, u model.UserUpdate) error {
+	query := "UPDATE users SET name = ?, email = ?, role = ?"
+	args := []any{u.Name, u.Email, u.Role}
+	if u.PasswordHash != nil {
+		query += ", password_hash = ?"
+		args = append(args, *u.PasswordHash)
+	}
+	res, err := r.db.ExecContext(ctx, query+" WHERE id = ?", append(args, id)...)
+	if isDuplicate(err) {
+		return apperr.ErrConflict
+	}
+	if err != nil {
+		return err
+	}
+	n, err := res.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if n == 0 {
+		return apperr.ErrNotFound
+	}
+	return nil
+}
+
+func (r *mysqlUserRepository) CountAdmins(ctx context.Context) (int, error) {
+	var n int
+	err := r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM users WHERE role = 'admin'").Scan(&n)
+	return n, err
+}
+
+// isDuplicate は UNIQUE 制約違反（メールアドレスの重複）か
+func isDuplicate(err error) bool {
+	var mysqlErr *mysql.MySQLError
+	return errors.As(err, &mysqlErr) && mysqlErr.Number == errDuplicateEntry
 }
 
 func (r *mysqlUserRepository) UpdateImageType(ctx context.Context, id uint64, imageType model.ImageType) error {

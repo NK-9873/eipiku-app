@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"eipiku/learning-service/internal/apperr"
@@ -72,4 +73,28 @@ func TestWordService_GetWord_NotFound(t *testing.T) {
 	if _, err := NewWordService(repo).GetWord(context.Background(), 99); !errors.Is(err, apperr.ErrNotFound) {
 		t.Errorf("ErrNotFound が返るはずが %v", err)
 	}
+}
+
+func TestWordService_CreateWord_ExampleJapanese(t *testing.T) {
+	t.Run("例文の日本語訳も前後の空白を除いて保存し、空なら nil にする", func(t *testing.T) {
+		var saved []model.WordInput
+		repo := &mockWordRepository{
+			create: func(ctx context.Context, in model.WordInput) (model.Word, error) {
+				saved = append(saved, in)
+				return model.Word{}, nil
+			},
+		}
+		s := NewWordService(repo)
+		s.CreateWord(context.Background(), adminActor, model.WordInput{English: "dog", Japanese: "犬", ExampleJapanese: ptr(" 私は犬を飼っています。 ")})
+		s.CreateWord(context.Background(), adminActor, model.WordInput{English: "dog", Japanese: "犬", ExampleJapanese: ptr("")})
+		if len(saved) != 2 || saved[0].ExampleJapanese == nil || *saved[0].ExampleJapanese != "私は犬を飼っています。" || saved[1].ExampleJapanese != nil {
+			t.Errorf("saved = %#v", saved)
+		}
+	})
+
+	t.Run("256文字なら ValidationError", func(t *testing.T) {
+		_, err := NewWordService(&mockWordRepository{}).CreateWord(context.Background(), adminActor,
+			model.WordInput{English: "dog", Japanese: "犬", ExampleJapanese: ptr(strings.Repeat("あ", 256))})
+		assertValidationError(t, err, "example_japanese は255文字以内")
+	})
 }

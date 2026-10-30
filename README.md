@@ -12,6 +12,8 @@
 | users-db | user-service 用 MySQL | 13306 |
 | learning-db | learning-service 用 MySQL | 13307 |
 
+本番（EC2 1台 + Docker Compose）へのデプロイは [docs/deploy.md](docs/deploy.md) を参照。
+
 ## 必要なツール
 
 - Docker Desktop（Docker Compose を含む）

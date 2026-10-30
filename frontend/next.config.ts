@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // 本番の Docker イメージ用。動かすのに必要なファイルだけを .next/standalone にまとめる（frontend/Dockerfile）
+  output: "standalone",
   experimental: {
     agentFeedback: true,
     serverActions: {

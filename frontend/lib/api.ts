@@ -30,18 +30,20 @@ type Options = {
 };
 
 export async function apiFetch<T>(service: keyof typeof SERVICES, path: string, options: Options = {}): Promise<T> {
-  const baseURL = SERVICES[service];
-  if (!baseURL) {
-    throw new Error(`${service === "user" ? "USER_API_URL" : "LEARNING_API_URL"} が設定されていません（frontend/.env.local を確認してください）`);
-  }
-
   const isForm = options.body instanceof FormData;
   const headers: Record<string, string> = {};
   if (options.body !== undefined && !isForm) headers["Content-Type"] = "application/json";
+  // Cookie を読むと、next build のときはここで事前生成が止まり、リクエスト時に動く。
+  // そのため URL の確認はこの後にする（ビルド時は API の URL が無いので、先に確かめるとビルドが失敗する）
   if (options.auth !== false) {
     const token = (await cookies()).get(TOKEN_COOKIE)?.value;
     if (!token) redirect("/login");
     headers.Authorization = `Bearer ${token}`;
+  }
+
+  const baseURL = SERVICES[service];
+  if (!baseURL) {
+    throw new Error(`${service === "user" ? "USER_API_URL" : "LEARNING_API_URL"} が設定されていません（frontend/.env.local を確認してください）`);
   }
 
   let res: Response;

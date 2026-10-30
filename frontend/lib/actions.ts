@@ -5,7 +5,7 @@
 import { cookies } from "next/headers";
 import { redirect, unstable_rethrow } from "next/navigation";
 import { apiFetch, ApiError } from "./api";
-import { TOKEN_COOKIE } from "./session-cookie";
+import { isSecureCookie, TOKEN_COOKIE } from "./session-cookie";
 import type { FormState, ImageType, Mastery, User } from "./types";
 
 function toFormState(e: unknown): FormState {
@@ -31,7 +31,7 @@ export async function login(_prev: FormState, formData: FormData): Promise<FormS
   (await cookies()).set(TOKEN_COOKIE, result.token, {
     httpOnly: true, // JavaScript から読めないようにする
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: isSecureCookie(), // COOKIE_SECURE で切り替える（https なしで動かすときは false）
     path: "/",
     expires: new Date(result.expires_at), // トークンと同じ24時間で消える
   });

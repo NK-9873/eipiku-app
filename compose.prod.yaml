@@ -1,0 +1,109 @@
+# 本番（EC2 1台）用。手順は docs/deploy.md
+#   docker compose -f compose.prod.yaml --env-file .env.prod up -d --build
+#
+# インターネットに公開するのは frontend だけ（80番）。API と DB はポートを公開せず、
+# compose の内部ネットワークでサービス名（user-service など）を使って通信する（BFF 構成）
+name: eipiku
+
+services:
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    ports: ["${HTTP_PORT:-80}:3000"]
+    environment:
+      USER_API_URL: http://user-service:8080
+      LEARNING_API_URL: http://learning-service:8080
+      # https なしで動かす間は false（true だとブラウザが Cookie を送らず、ログインできない）
+      COOKIE_SECURE: ${COOKIE_SECURE:-false}
+    depends_on: [user-service, learning-service]
+
+  user-service:
+    build: ./services/user-service
+    restart: unless-stopped
+    environment:
+      DB_HOST: users-db
+      DB_PORT: "3306"
+      DB_NAME: users
+      DB_USER: users_app
+      DB_PASSWORD: ${USERS_DB_PASSWORD:?.env.prod に設定してください}
+      JWT_SECRET: ${JWT_SECRET:?.env.prod に設定してください}
+      CORS_ALLOWED_ORIGIN: ${PUBLIC_ORIGIN:?.env.prod に設定してください}
+    depends_on:
+      users-db:
+        condition: service_healthy
+
+  learning-service:
+    build: ./services/learning-service
+    restart: unless-stopped
+    environment:
+      DB_HOST: learning-db
+      DB_PORT: "3306"
+      DB_NAME: learning
+      DB_USER: learning_app
+      DB_PASSWORD: ${LEARNING_DB_PASSWORD:?.env.prod に設定してください}
+      JWT_SECRET: ${JWT_SECRET:?.env.prod に設定してください}
+      CORS_ALLOWED_ORIGIN: ${PUBLIC_ORIGIN:?.env.prod に設定してください}
+      IMAGE_DIR: /data/images
+      # 画像の URL の先頭。frontend の /images/* が learning-service に転送するので、既定は同じサイト内の /images
+      IMAGE_BASE_URL: ${IMAGE_BASE_URL:-/images}
+    volumes: ["learning_images:/data/images"]
+    depends_on:
+      learning-db:
+        condition: service_healthy
+
+  users-db:
+    image: mysql:8.4
+    restart: unless-stopped
+    # メモリの少ない EC2 向けに、使うメモリを減らす
+    command: ["--innodb-buffer-pool-size=64M", "--performance-schema=OFF"]
+    environment:
+      MYSQL_DATABASE: users
+      MYSQL_USER: users_app
+      MYSQL_PASSWORD: ${USERS_DB_PASSWORD:?.env.prod に設定してください}
+      MYSQL_ROOT_PASSWORD: ${USERS_ROOT_PASSWORD:?.env.prod に設定してください}
+    volumes: ["users_data:/var/lib/mysql"]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      retries: 20
+
+  learning-db:
+    image: mysql:8.4
+    restart: unless-stopped
+    command: ["--innodb-buffer-pool-size=64M", "--performance-schema=OFF"]
+    environment:
+      MYSQL_DATABASE: learning
+      MYSQL_USER: learning_app
+      MYSQL_PASSWORD: ${LEARNING_DB_PASSWORD:?.env.prod に設定してください}
+      MYSQL_ROOT_PASSWORD: ${LEARNING_ROOT_PASSWORD:?.env.prod に設定してください}
+    volumes: ["learning_data:/var/lib/mysql"]
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 5s
+      retries: 20
+
+  # テーブル作成（migration）。普段は起動せず、必要なときだけ実行する
+  #   docker compose -f compose.prod.yaml --env-file .env.prod run --rm migrate-users
+  #   docker compose -f compose.prod.yaml --env-file .env.prod run --rm migrate-learning
+  migrate-users:
+    image: migrate/migrate:4
+    profiles: [tools]
+    volumes: ["./services/user-service/migrations:/migrations:ro"]
+    command: ["-path=/migrations", "-database", "mysql://users_app:${USERS_DB_PASSWORD}@tcp(users-db:3306)/users", "up"]
+    depends_on:
+      users-db:
+        condition: service_healthy
+
+  migrate-learning:
+    image: migrate/migrate:4
+    profiles: [tools]
+    volumes: ["./services/learning-service/migrations:/migrations:ro"]
+    command: ["-path=/migrations", "-database", "mysql://learning_app:${LEARNING_DB_PASSWORD}@tcp(learning-db:3306)/learning", "up"]
+    depends_on:
+      learning-db:
+        condition: service_healthy
+
+volumes:
+  users_data:
+  learning_data:
+  learning_images:
